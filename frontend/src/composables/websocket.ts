@@ -16,19 +16,24 @@ export const useWebSocketProtobuf = <T extends Message>(
       return undefined
     }
   })
-  const { data } = useWebSocket<Blob>(url, {
+  const { data, status } = useWebSocket<Blob>(url, {
     autoReconnect: true,
     immediate: true,
   })
 
-  const message = computedAsync(async () => {
-    if (data.value && url.value) {
-      const blob = await data.value.arrayBuffer()
-      const bytes = new Uint8Array(blob)
-      return fromBinary(schema, bytes)
-    }
-    return undefined
-  })
+  const message = computedAsync(
+    async () => {
+      if (data.value && url.value) {
+        const blob = await data.value.arrayBuffer()
+        const bytes = new Uint8Array(blob)
+        const msg = fromBinary(schema, bytes)
+        return msg
+      }
+      return undefined
+    },
+    undefined,
+    { lazy: false, evaluating: undefined }
+  )
 
-  return { message }
+  return { message, status }
 }

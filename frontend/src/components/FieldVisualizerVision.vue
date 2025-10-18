@@ -5,6 +5,7 @@ import SvgReferee from '@/components/SvgReferee.vue'
 import SvgTracked from '@/components/SvgTracked.vue'
 import SourceSelector from '@/components/SourceSelector.vue'
 import LayerControl, { type LayerVisibility } from '@/components/LayerControl.vue'
+import SettingsPanel from '@/components/SettingsPanel.vue'
 import { computed, ref } from 'vue'
 import {
   useTrackedFrame,
@@ -32,12 +33,14 @@ const sources = computed(() => {
 const layerVisibility = ref<LayerVisibility>({
   ball: true,
   referee: true,
+  fieldLines: true,
 })
 </script>
 
 <template>
   <LayerControl v-model="layerVisibility" />
-  <FieldVisualizer :field="field">
+  <SettingsPanel />
+  <FieldVisualizer :field="field" :show-field-lines="layerVisibility.fieldLines">
     <SvgVision
       v-if="detectionFrame"
       :detection-frame="detectionFrame"

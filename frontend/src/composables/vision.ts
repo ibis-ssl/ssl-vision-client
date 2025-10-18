@@ -2,7 +2,7 @@ import {
   type SSL_DetectionFrame,
   SSL_DetectionFrameSchema,
 } from '@/proto/vision/ssl_vision_detection_pb.ts'
-import { computed, type MaybeRefOrGetter, toValue } from 'vue'
+import { computed, type MaybeRefOrGetter, ref, toValue, watch } from 'vue'
 import {
   type SSL_GeometryData,
   SSL_GeometryDataSchema,
@@ -55,14 +55,20 @@ export const useVisionGeometry = () => {
     SSL_GeometryDataSchema,
   )
 
-  const field = computed(() => {
-    if (message.value && message.value.field) {
-      return message.value.field
-    }
-    return defaultField
-  })
+  // ジオメトリデータをキャッシュ（一度受信したら保持）
+  const cachedField = ref<SSL_GeometryFieldSize>(defaultField)
 
-  return { field }
+  watch(
+    message,
+    (newMessage) => {
+      if (newMessage && newMessage.field) {
+        cachedField.value = newMessage.field
+      }
+    },
+    { immediate: true }
+  )
+
+  return { field: cachedField }
 }
 
 export const useTrackedFrame = (activeSource: MaybeRefOrGetter<string>) => {

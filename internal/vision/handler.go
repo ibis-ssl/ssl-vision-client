@@ -19,6 +19,11 @@ func HandleVisionDetection(DetectionProvider func() *SSL_DetectionFrame) http.Ha
 
 			for {
 				packet := DetectionProvider()
+				// データがまだ受信されていない場合もスキップ
+				if packet == nil {
+					time.Sleep(publishDt)
+					continue
+				}
 				if err := common.SendProtoMessage(conn, packet); err != nil {
 					log.Println(err)
 					return
@@ -39,6 +44,11 @@ func HandleVisionGeometry(GeometryProvider func() *SSL_GeometryData) http.Handle
 			var lastPacket *SSL_GeometryData
 			for {
 				packet := GeometryProvider()
+				// ジオメトリデータがまだ受信されていない場合はスキップ
+				if packet == nil {
+					time.Sleep(publishDt)
+					continue
+				}
 				if lastPacket == nil || !proto.Equal(packet, lastPacket) {
 					if err := common.SendProtoMessage(conn, packet); err != nil {
 						log.Println(err)

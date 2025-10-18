@@ -2,6 +2,7 @@
 export interface LayerVisibility {
   ball: boolean
   referee: boolean
+  fieldLines: boolean
 }
 
 const layers = defineModel<LayerVisibility>({ required: true })
@@ -16,6 +17,7 @@ const toggleLayer = (layerName: keyof LayerVisibility) => {
     <span class="control-label">レイヤー:</span>
     <label class="layer-item">
       <input
+        id="layer-ball"
         type="checkbox"
         :checked="layers.ball"
         @change="toggleLayer('ball')"
@@ -24,11 +26,21 @@ const toggleLayer = (layerName: keyof LayerVisibility) => {
     </label>
     <label class="layer-item">
       <input
+        id="layer-referee"
         type="checkbox"
         :checked="layers.referee"
         @change="toggleLayer('referee')"
       />
       <span>レフェリー情報</span>
+    </label>
+    <label class="layer-item">
+      <input
+        id="layer-field-lines"
+        type="checkbox"
+        :checked="layers.fieldLines"
+        @change="toggleLayer('fieldLines')"
+      />
+      <span>フィールドライン</span>
     </label>
   </div>
 </template>

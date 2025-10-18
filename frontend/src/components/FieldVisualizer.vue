@@ -4,9 +4,13 @@ import SvgZoomPan from '@/components/SvgZoomPan.vue'
 import type { SSL_GeometryFieldSize } from '@/proto/vision/ssl_vision_geometry_pb.ts'
 import SvgFieldLines from '@/components/SvgFieldLines.vue'
 
-const props = defineProps<{
-  field: SSL_GeometryFieldSize
-}>()
+const props = withDefaults(
+  defineProps<{
+    field: SSL_GeometryFieldSize
+    showFieldLines?: boolean
+  }>(),
+  { showFieldLines: true }
+)
 
 const wrapperDiv = ref<HTMLDivElement>()
 const rotateField = ref(false)
@@ -68,7 +72,7 @@ onBeforeUnmount(() => {
             fill="green"
           />
 
-          <svg-field-lines :field="field" />
+          <svg-field-lines v-if="showFieldLines" :field="field" />
           <slot />
         </g>
       </svg>

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/RoboCup-SSL/ssl-vision-client/internal/config"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/gc"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/tracked"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/vision"
@@ -12,6 +13,8 @@ func NewServer(
 	TrackerProvider func() map[string]*tracked.TrackerWrapperPacket,
 	GeometryProvider func() *vision.SSL_GeometryData,
 	RefereeProvider func() *gc.Referee,
+	cfg *config.Config,
+	restarter config.ReceiverRestarter,
 ) http.Handler {
 	mux := http.NewServeMux()
 	addRoutes(
@@ -20,6 +23,8 @@ func NewServer(
 		TrackerProvider,
 		GeometryProvider,
 		RefereeProvider,
+		cfg,
+		restarter,
 	)
 	return mux
 }

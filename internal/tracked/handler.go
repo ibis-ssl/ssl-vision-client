@@ -25,14 +25,16 @@ func HandleTrackerSources(TrackerProvider func() map[string]*TrackerWrapperPacke
 			var trackerSourceMap map[string]string
 			for {
 				packet := TrackerProvider()
-				newTrackerSourceMap := getTrackerSourceMap(packet)
-				if !maps.Equal(newTrackerSourceMap, trackerSourceMap) {
-					trackerSourceMap = newTrackerSourceMap
-					message := TrackerSourceResponse{TrackerSources: trackerSourceMap}
+				if packet != nil {
+					newTrackerSourceMap := getTrackerSourceMap(packet)
+					if !maps.Equal(newTrackerSourceMap, trackerSourceMap) {
+						trackerSourceMap = newTrackerSourceMap
+						message := TrackerSourceResponse{TrackerSources: trackerSourceMap}
 
-					if err := common.SendJSONMessage(conn, message); err != nil {
-						log.Println(err)
-						return
+						if err := common.SendJSONMessage(conn, message); err != nil {
+							log.Println(err)
+							return
+						}
 					}
 				}
 
@@ -64,10 +66,12 @@ func HandleTracker(TrackerProvider func() map[string]*TrackerWrapperPacket) http
 
 			for {
 				packets := TrackerProvider()
-				if packet, ok := packets[activeTrackerSource]; ok {
-					if err := common.SendProtoMessage(conn, packet.TrackedFrame); err != nil {
-						log.Println(err)
-						return
+				if packets != nil {
+					if packet, ok := packets[activeTrackerSource]; ok {
+						if err := common.SendProtoMessage(conn, packet.TrackedFrame); err != nil {
+							log.Println(err)
+							return
+						}
 					}
 				}
 
