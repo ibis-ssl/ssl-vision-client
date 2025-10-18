@@ -3,6 +3,7 @@ import FieldVisualizer from '@/components/FieldVisualizer.vue'
 import SvgVision from '@/components/SvgVision.vue'
 import SvgReferee from '@/components/SvgReferee.vue'
 import SvgTracked from '@/components/SvgTracked.vue'
+import SvgBallPlacement from '@/components/SvgBallPlacement.vue'
 import SourceSelector from '@/components/SourceSelector.vue'
 import LayerControl, { type LayerVisibility } from '@/components/LayerControl.vue'
 import SettingsPanel from '@/components/SettingsPanel.vue'
@@ -51,6 +52,11 @@ const layerVisibility = ref<LayerVisibility>({
       v-if="referee && layerVisibility.referee"
       :field="field"
       :referee="referee"
+    />
+    <SvgBallPlacement
+      v-if="referee && layerVisibility.referee && detectionFrame"
+      :referee="referee"
+      :detection-frame="detectionFrame"
     />
     <SvgTracked v-if="trackedFrame" :tracked-frame="trackedFrame" />
   </FieldVisualizer>
