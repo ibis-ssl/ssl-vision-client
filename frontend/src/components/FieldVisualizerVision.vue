@@ -4,10 +4,9 @@ import SvgVision from '@/components/SvgVision.vue'
 import SvgReferee from '@/components/SvgReferee.vue'
 import SvgTracked from '@/components/SvgTracked.vue'
 import SvgBallPlacement from '@/components/SvgBallPlacement.vue'
-import SourceSelector from '@/components/SourceSelector.vue'
-import LayerControl, { type LayerVisibility } from '@/components/LayerControl.vue'
 import SettingsPanel from '@/components/SettingsPanel.vue'
 import RefereeInfo from '@/components/RefereeInfo.vue'
+import type { LayerVisibility } from '@/components/LayerControl.vue'
 import { computed, ref } from 'vue'
 import {
   useTrackedFrame,
@@ -40,8 +39,11 @@ const layerVisibility = ref<LayerVisibility>({
 </script>
 
 <template>
-  <LayerControl v-model="layerVisibility" />
-  <SettingsPanel />
+  <SettingsPanel
+    :sources="sources"
+    v-model:layer-visibility="layerVisibility"
+    v-model:active-source="activeSource"
+  />
   <FieldVisualizer :field="field" :show-field-lines="layerVisibility.fieldLines">
     <SvgVision
       v-if="detectionFrame"
@@ -60,6 +62,5 @@ const layerVisibility = ref<LayerVisibility>({
     />
     <SvgTracked v-if="trackedFrame" :tracked-frame="trackedFrame" />
   </FieldVisualizer>
-  <source-selector :sources="sources" v-model="activeSource" />
   <RefereeInfo v-if="referee && layerVisibility.referee" :referee="referee" />
 </template>

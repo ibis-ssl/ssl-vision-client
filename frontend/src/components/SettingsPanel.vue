@@ -1,8 +1,17 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useSettings } from '@/composables/settings'
+import type { LayerVisibility } from '@/components/LayerControl.vue'
 
 const { config, loading, error, successMessage, fetchConfig, updateConfig } = useSettings()
+
+// Props for layer and source control
+const props = defineProps<{
+  sources: { [key: string]: string }
+}>()
+
+const layerVisibility = defineModel<LayerVisibility>('layerVisibility', { required: true })
+const activeSource = defineModel<string>('activeSource', { required: true })
 
 const isOpen = ref(false)
 const visionPort = ref(10006)
@@ -37,6 +46,14 @@ const handleReset = () => {
   trackedPort.value = config.value.trackedPort
   refereePort.value = config.value.refereePort
 }
+
+const toggleLayer = (layerName: keyof LayerVisibility) => {
+  layerVisibility.value[layerName] = !layerVisibility.value[layerName]
+}
+
+const updateActiveSource = (sourceId: string) => {
+  activeSource.value = sourceId
+}
 </script>
 
 <template>
@@ -46,12 +63,68 @@ const handleReset = () => {
     </button>
 
     <div v-if="isOpen" class="panel-content">
-      <h3>ポート設定</h3>
+      <h3>設定</h3>
 
-      <div v-if="error" class="message error">{{ error }}</div>
-      <div v-if="successMessage" class="message success">{{ successMessage }}</div>
+      <!-- レイヤー設定 -->
+      <div class="section">
+        <div class="section-title">レイヤー</div>
+        <div class="layer-controls">
+          <label class="layer-item">
+            <input
+              type="checkbox"
+              :checked="layerVisibility.ball"
+              @change="toggleLayer('ball')"
+            />
+            <span>Ball</span>
+          </label>
+          <label class="layer-item">
+            <input
+              type="checkbox"
+              :checked="layerVisibility.referee"
+              @change="toggleLayer('referee')"
+            />
+            <span>Referee</span>
+          </label>
+          <label class="layer-item">
+            <input
+              type="checkbox"
+              :checked="layerVisibility.fieldLines"
+              @change="toggleLayer('fieldLines')"
+            />
+            <span>Field Lines</span>
+          </label>
+        </div>
+      </div>
 
-      <div class="setting-group">
+      <!-- ソース選択 -->
+      <div class="section">
+        <div class="section-title">Source</div>
+        <div class="source-controls">
+          <label
+            v-for="[sourceId, sourceName] of Object.entries(props.sources)"
+            :key="sourceId"
+            class="source-item"
+          >
+            <input
+              type="radio"
+              :value="sourceId"
+              name="source-selector"
+              :checked="sourceId === activeSource"
+              @click="updateActiveSource(sourceId)"
+            />
+            <span>{{ sourceName }}</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- ポート設定 -->
+      <div class="section">
+        <div class="section-title">Port</div>
+
+        <div v-if="error" class="message error">{{ error }}</div>
+        <div v-if="successMessage" class="message success">{{ successMessage }}</div>
+
+        <div class="setting-group">
         <label for="vision-port">
           <span class="label-text">Vision</span>
           <div class="input-group">
@@ -105,11 +178,12 @@ const handleReset = () => {
         </label>
       </div>
 
-      <div class="button-group">
-        <button @click="handleReset" :disabled="loading" class="btn-secondary">リセット</button>
-        <button @click="handleSave" :disabled="loading" class="btn-primary">
-          {{ loading ? '保存中...' : '保存して適用' }}
-        </button>
+        <div class="button-group">
+          <button @click="handleReset" :disabled="loading" class="btn-secondary">リセット</button>
+          <button @click="handleSave" :disabled="loading" class="btn-primary">
+            {{ loading ? '保存中...' : '保存して適用' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -163,6 +237,51 @@ h3 {
   font-size: 1.2em;
   border-bottom: 1px solid rgba(255, 255, 255, 0.3);
   padding-bottom: 0.5em;
+}
+
+.section {
+  margin-bottom: 1.5em;
+}
+
+.section-title {
+  font-size: 0.95em;
+  font-weight: bold;
+  margin-bottom: 0.5em;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.layer-controls,
+.source-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+}
+
+.layer-item,
+.source-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  cursor: pointer;
+  user-select: none;
+  padding: 0.3em;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.layer-item:hover,
+.source-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.layer-item input[type='checkbox'],
+.source-item input[type='radio'] {
+  cursor: pointer;
+}
+
+.layer-item span,
+.source-item span {
+  font-size: 0.9em;
 }
 
 .setting-group {
