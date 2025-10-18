@@ -6,6 +6,7 @@ import SvgTracked from '@/components/SvgTracked.vue'
 import SourceSelector from '@/components/SourceSelector.vue'
 import LayerControl, { type LayerVisibility } from '@/components/LayerControl.vue'
 import SettingsPanel from '@/components/SettingsPanel.vue'
+import RefereeInfo from '@/components/RefereeInfo.vue'
 import { computed, ref } from 'vue'
 import {
   useTrackedFrame,
@@ -54,4 +55,5 @@ const layerVisibility = ref<LayerVisibility>({
     <SvgTracked v-if="trackedFrame" :tracked-frame="trackedFrame" />
   </FieldVisualizer>
   <source-selector :sources="sources" v-model="activeSource" />
+  <RefereeInfo v-if="referee && layerVisibility.referee" :referee="referee" />
 </template>

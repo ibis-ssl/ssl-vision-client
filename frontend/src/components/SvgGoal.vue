@@ -24,9 +24,11 @@ const xMultiplier = computed(() => {
 })
 
 const style = computed(() => {
+  // lineThicknessは通常10mm程度なので、最小値を0.01（10mm）に設定
+  const thickness = Math.max((props.field.lineThickness || 10) / 1000, 0.01)
   return {
     stroke: props.teamColor == 'YELLOW' ? 'yellow' : 'blue',
-    strokeWidth: props.field.lineThickness / 1000,
+    strokeWidth: thickness,
     strokeOpacity: 1,
     fill: 'none',
   }
