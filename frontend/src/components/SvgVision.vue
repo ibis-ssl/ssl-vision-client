@@ -3,13 +3,20 @@ import SvgRobot from '@/components/SvgRobot.vue'
 import SvgBall from '@/components/SvgBall.vue'
 import type { SSL_DetectionFrame } from '@/proto/vision/ssl_vision_detection_pb.ts'
 
-defineProps<{
-  detectionFrame: SSL_DetectionFrame
-}>()
+const props = withDefaults(
+  defineProps<{
+    detectionFrame: SSL_DetectionFrame
+    showBall?: boolean
+  }>(),
+  {
+    showBall: true,
+  }
+)
 </script>
 
 <template>
   <SvgBall
+    v-if="props.showBall"
     v-for="(s, i) in detectionFrame.balls"
     :key="'ball-' + i"
     :x="s.x / 1000"

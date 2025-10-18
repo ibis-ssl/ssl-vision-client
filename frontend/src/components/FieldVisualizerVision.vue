@@ -4,6 +4,7 @@ import SvgVision from '@/components/SvgVision.vue'
 import SvgReferee from '@/components/SvgReferee.vue'
 import SvgTracked from '@/components/SvgTracked.vue'
 import SourceSelector from '@/components/SourceSelector.vue'
+import LayerControl, { type LayerVisibility } from '@/components/LayerControl.vue'
 import { computed, ref } from 'vue'
 import {
   useTrackedFrame,
@@ -26,12 +27,27 @@ const sources = computed(() => {
     ...trackerSources.value,
   }
 })
+
+// レイヤー表示状態の管理
+const layerVisibility = ref<LayerVisibility>({
+  ball: true,
+  referee: true,
+})
 </script>
 
 <template>
+  <LayerControl v-model="layerVisibility" />
   <FieldVisualizer :field="field">
-    <SvgVision v-if="detectionFrame" :detection-frame="detectionFrame" />
-    <SvgReferee v-if="referee" :field="field" :referee="referee" />
+    <SvgVision
+      v-if="detectionFrame"
+      :detection-frame="detectionFrame"
+      :show-ball="layerVisibility.ball"
+    />
+    <SvgReferee
+      v-if="referee && layerVisibility.referee"
+      :field="field"
+      :referee="referee"
+    />
     <SvgTracked v-if="trackedFrame" :tracked-frame="trackedFrame" />
   </FieldVisualizer>
   <source-selector :sources="sources" v-model="activeSource" />
