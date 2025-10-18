@@ -19,7 +19,7 @@ function textTransform(x: number, y: number) {
 }
 
 // 表示期間（ミリ秒）
-const DISPLAY_DURATION = 5000
+const DISPLAY_DURATION = 10000
 
 // 現在時刻を定期的に更新
 const now = ref(Date.now())
