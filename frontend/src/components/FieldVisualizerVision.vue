@@ -39,28 +39,49 @@ const layerVisibility = ref<LayerVisibility>({
 </script>
 
 <template>
-  <SettingsPanel
-    :sources="sources"
-    v-model:layer-visibility="layerVisibility"
-    v-model:active-source="activeSource"
-  />
-  <FieldVisualizer :field="field" :show-field-lines="layerVisibility.fieldLines">
-    <SvgVision
-      v-if="detectionFrame"
-      :detection-frame="detectionFrame"
-      :show-ball="layerVisibility.ball"
+  <div class="visualizer-container">
+    <SettingsPanel
+      :sources="sources"
+      v-model:layer-visibility="layerVisibility"
+      v-model:active-source="activeSource"
     />
-    <SvgReferee
-      v-if="referee && layerVisibility.referee"
-      :field="field"
-      :referee="referee"
-    />
-    <SvgBallPlacement
-      v-if="referee && layerVisibility.referee && detectionFrame"
-      :referee="referee"
-      :detection-frame="detectionFrame"
-    />
-    <SvgTracked v-if="trackedFrame" :tracked-frame="trackedFrame" />
-  </FieldVisualizer>
-  <RefereeInfo v-if="referee && layerVisibility.referee" :referee="referee" />
+    <div class="field-container" :class="{ 'with-referee-info': referee && layerVisibility.referee }">
+      <FieldVisualizer :field="field" :show-field-lines="layerVisibility.fieldLines">
+        <SvgVision
+          v-if="detectionFrame"
+          :detection-frame="detectionFrame"
+          :show-ball="layerVisibility.ball"
+        />
+        <SvgReferee
+          v-if="referee && layerVisibility.referee"
+          :field="field"
+          :referee="referee"
+        />
+        <SvgBallPlacement
+          v-if="referee && layerVisibility.referee && detectionFrame"
+          :referee="referee"
+          :detection-frame="detectionFrame"
+        />
+        <SvgTracked v-if="trackedFrame" :tracked-frame="trackedFrame" />
+      </FieldVisualizer>
+    </div>
+    <RefereeInfo v-if="referee && layerVisibility.referee" :referee="referee" />
+  </div>
 </template>
+
+<style scoped>
+.visualizer-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.field-container {
+  width: 100%;
+  height: 100%;
+}
+
+.field-container.with-referee-info {
+  height: calc(100% - 4em);
+}
+</style>
