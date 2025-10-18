@@ -11,7 +11,6 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ toLower(github.repository) }}
 
 jobs:
   build-and-push:
@@ -29,6 +28,11 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive image name
+        run: echo "IMAGE_NAME=${REPO,,}" >> $GITHUB_ENV
+        env:
+          REPO: ${{ github.repository }}
 
       - name: Extract metadata (tags, labels)
         id: meta
