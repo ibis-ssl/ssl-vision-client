@@ -4,6 +4,7 @@ import SvgVision from '@/components/SvgVision.vue'
 import SvgReferee from '@/components/SvgReferee.vue'
 import SvgTracked from '@/components/SvgTracked.vue'
 import SvgBallPlacement from '@/components/SvgBallPlacement.vue'
+import SvgGameEvents from '@/components/SvgGameEvents.vue'
 import SettingsPanel from '@/components/SettingsPanel.vue'
 import RefereeInfo from '@/components/RefereeInfo.vue'
 import type { LayerVisibility } from '@/components/LayerControl.vue'
@@ -35,6 +36,7 @@ const layerVisibility = ref<LayerVisibility>({
   ball: true,
   referee: true,
   fieldLines: true,
+  fouls: true,
 })
 </script>
 
@@ -61,6 +63,10 @@ const layerVisibility = ref<LayerVisibility>({
           v-if="referee && layerVisibility.referee && detectionFrame"
           :referee="referee"
           :detection-frame="detectionFrame"
+        />
+        <SvgGameEvents
+          v-if="referee && layerVisibility.fouls"
+          :game-events="referee.gameEvents"
         />
         <SvgTracked v-if="trackedFrame" :tracked-frame="trackedFrame" />
       </FieldVisualizer>

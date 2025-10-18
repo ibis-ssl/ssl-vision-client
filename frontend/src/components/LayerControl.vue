@@ -3,6 +3,7 @@ export interface LayerVisibility {
   ball: boolean
   referee: boolean
   fieldLines: boolean
+  fouls: boolean
 }
 
 const layers = defineModel<LayerVisibility>({ required: true })
@@ -41,6 +42,15 @@ const toggleLayer = (layerName: keyof LayerVisibility) => {
         @change="toggleLayer('fieldLines')"
       />
       <span>フィールドライン</span>
+    </label>
+    <label class="layer-item">
+      <input
+        id="layer-fouls"
+        type="checkbox"
+        :checked="layers.fouls"
+        @change="toggleLayer('fouls')"
+      />
+      <span>ファール</span>
     </label>
   </div>
 </template>
