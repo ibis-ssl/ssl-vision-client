@@ -4,6 +4,7 @@ import (
 	"flag"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/config"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/gc"
+	"github.com/RoboCup-SSL/ssl-vision-client/internal/grsim"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/tracked"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/vision"
 	"log"
@@ -21,6 +22,7 @@ type ReceiverManager struct {
 	visionReceiver  *vision.Receiver
 	trackedReceiver *tracked.Receiver
 	refereeReceiver *gc.Receiver
+	grSimSender     *grsim.Sender
 	skipIfis        []string
 	verbose         bool
 	mu              sync.Mutex
@@ -48,10 +50,17 @@ func main() {
 func setupServer(cfg *config.Config) *http.Server {
 	skipIfis := parseSkipInterfaces()
 
+	// grSim Senderを初期化
+	grSimSender := grsim.NewSender(cfg.GetGrSimAddress())
+	if err := grSimSender.Connect(); err != nil {
+		log.Printf("Warning: Failed to connect to grSim: %v", err)
+	}
+
 	// レシーバーマネージャーを初期化
 	manager := &ReceiverManager{
-		skipIfis: skipIfis,
-		verbose:  *verbose,
+		skipIfis:    skipIfis,
+		verbose:     *verbose,
+		grSimSender: grSimSender,
 	}
 
 	// 初回起動
@@ -65,6 +74,7 @@ func setupServer(cfg *config.Config) *http.Server {
 		manager.GetRefereeMsg,
 		cfg,
 		manager,
+		grSimSender,
 	)
 	return &http.Server{
 		Addr:    *address,

@@ -17,18 +17,22 @@ const (
 
 // Config アプリケーション設定
 type Config struct {
-	VisionPort  int `json:"visionPort"`
-	TrackedPort int `json:"trackedPort"`
-	RefereePort int `json:"refereePort"`
-	mu          sync.RWMutex
+	VisionPort   int    `json:"visionPort"`
+	TrackedPort  int    `json:"trackedPort"`
+	RefereePort  int    `json:"refereePort"`
+	GrSimAddress string `json:"grSimAddress"`
+	GrSimPort    int    `json:"grSimPort"`
+	mu           sync.RWMutex
 }
 
 // DefaultConfig デフォルト設定を返す
 func DefaultConfig() *Config {
 	return &Config{
-		VisionPort:  10006,
-		TrackedPort: 10010,
-		RefereePort: 10003,
+		VisionPort:   10006,
+		TrackedPort:  10010,
+		RefereePort:  10003,
+		GrSimAddress: "127.0.0.1",
+		GrSimPort:    20011,
 	}
 }
 
@@ -66,7 +70,7 @@ func (c *Config) Save() error {
 }
 
 // Update 設定を更新
-func (c *Config) Update(visionPort, trackedPort, refereePort int) {
+func (c *Config) Update(visionPort, trackedPort, refereePort int, grSimAddress string, grSimPort int) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -78,6 +82,12 @@ func (c *Config) Update(visionPort, trackedPort, refereePort int) {
 	}
 	if refereePort > 0 {
 		c.RefereePort = refereePort
+	}
+	if grSimAddress != "" {
+		c.GrSimAddress = grSimAddress
+	}
+	if grSimPort > 0 {
+		c.GrSimPort = grSimPort
 	}
 }
 
@@ -95,4 +105,11 @@ func (c *Config) GetPorts() (vision, tracked, referee int) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.VisionPort, c.TrackedPort, c.RefereePort
+}
+
+// GetGrSimAddress grSimのアドレスを取得
+func (c *Config) GetGrSimAddress() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return fmt.Sprintf("%s:%d", c.GrSimAddress, c.GrSimPort)
 }

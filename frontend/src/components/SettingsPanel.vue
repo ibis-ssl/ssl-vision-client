@@ -17,6 +17,8 @@ const isOpen = ref(false)
 const visionPort = ref(10006)
 const trackedPort = ref(10010)
 const refereePort = ref(10003)
+const grSimAddress = ref('127.0.0.1')
+const grSimPort = ref(20011)
 
 onMounted(async () => {
   // 設定を取得するが、値は手動で開いた時のみ更新
@@ -29,6 +31,8 @@ const togglePanel = () => {
     visionPort.value = config.value.visionPort
     trackedPort.value = config.value.trackedPort
     refereePort.value = config.value.refereePort
+    grSimAddress.value = config.value.grSimAddress || '127.0.0.1'
+    grSimPort.value = config.value.grSimPort || 20011
   }
   isOpen.value = !isOpen.value
 }
@@ -38,6 +42,8 @@ const handleSave = async () => {
     visionPort: visionPort.value,
     trackedPort: trackedPort.value,
     refereePort: refereePort.value,
+    grSimAddress: grSimAddress.value,
+    grSimPort: grSimPort.value,
   })
 }
 
@@ -45,6 +51,8 @@ const handleReset = () => {
   visionPort.value = config.value.visionPort
   trackedPort.value = config.value.trackedPort
   refereePort.value = config.value.refereePort
+  grSimAddress.value = config.value.grSimAddress || '127.0.0.1'
+  grSimPort.value = config.value.grSimPort || 20011
 }
 
 const toggleLayer = (layerName: keyof LayerVisibility) => {
@@ -177,6 +185,40 @@ const updateActiveSource = (sourceId: string) => {
           </div>
         </label>
       </div>
+      </div>
+
+      <!-- grSim設定 -->
+      <div class="section">
+        <div class="section-title">grSim</div>
+
+        <div class="setting-group">
+          <label for="grsim-address">
+            <span class="label-text">Address</span>
+            <input
+              id="grsim-address"
+              name="grsim-address"
+              type="text"
+              v-model="grSimAddress"
+              :disabled="loading"
+              placeholder="127.0.0.1"
+            />
+          </label>
+        </div>
+
+        <div class="setting-group">
+          <label for="grsim-port">
+            <span class="label-text">Port</span>
+            <input
+              id="grsim-port"
+              name="grsim-port"
+              type="number"
+              v-model.number="grSimPort"
+              min="1"
+              max="65535"
+              :disabled="loading"
+            />
+          </label>
+        </div>
 
         <div class="button-group">
           <button @click="handleReset" :disabled="loading" class="btn-secondary">リセット</button>
@@ -307,7 +349,8 @@ h3 {
   font-family: monospace;
 }
 
-input[type='number'] {
+input[type='number'],
+input[type='text'] {
   flex: 1;
   padding: 0.5em;
   background-color: rgba(255, 255, 255, 0.1);
@@ -318,13 +361,15 @@ input[type='number'] {
   font-family: monospace;
 }
 
-input[type='number']:focus {
+input[type='number']:focus,
+input[type='text']:focus {
   outline: none;
   border-color: rgba(100, 150, 255, 0.8);
   background-color: rgba(255, 255, 255, 0.15);
 }
 
-input[type='number']:disabled {
+input[type='number']:disabled,
+input[type='text']:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }

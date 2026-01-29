@@ -7,6 +7,8 @@ export interface Config {
   visionIP?: string
   trackedIP?: string
   refereeIP?: string
+  grSimAddress?: string
+  grSimPort?: number
 }
 
 const API_BASE = '/api/config'
@@ -47,6 +49,8 @@ export function useSettings() {
     visionPort: number
     trackedPort: number
     refereePort: number
+    grSimAddress?: string
+    grSimPort?: number
   }) => {
     loading.value = true
     error.value = null

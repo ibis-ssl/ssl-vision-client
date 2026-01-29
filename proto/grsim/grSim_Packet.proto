@@ -1,0 +1,11 @@
+syntax = "proto2";
+
+package grSim;
+
+import "grsim/grSim_Replacement.proto";
+
+option go_package = "grsim";
+
+message grSim_Packet {
+  optional grSim_Replacement replacement = 1;
+}

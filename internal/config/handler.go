@@ -8,9 +8,11 @@ import (
 
 // ConfigUpdateRequest 設定更新リクエスト
 type ConfigUpdateRequest struct {
-	VisionPort  int `json:"visionPort"`
-	TrackedPort int `json:"trackedPort"`
-	RefereePort int `json:"refereePort"`
+	VisionPort   int    `json:"visionPort"`
+	TrackedPort  int    `json:"trackedPort"`
+	RefereePort  int    `json:"refereePort"`
+	GrSimAddress string `json:"grSimAddress"`
+	GrSimPort    int    `json:"grSimPort"`
 }
 
 // ReceiverRestarter レシーバーを再起動するインターフェース
@@ -49,12 +51,14 @@ func handleGetConfig(w http.ResponseWriter, cfg *Config) {
 	visionPort, trackedPort, refereePort := cfg.GetPorts()
 
 	response := map[string]interface{}{
-		"visionPort":  visionPort,
-		"trackedPort": trackedPort,
-		"refereePort": refereePort,
-		"visionIP":    VisionIP,
-		"trackedIP":   TrackedIP,
-		"refereeIP":   RefereeIP,
+		"visionPort":   visionPort,
+		"trackedPort":  trackedPort,
+		"refereePort":  refereePort,
+		"visionIP":     VisionIP,
+		"trackedIP":    TrackedIP,
+		"refereeIP":    RefereeIP,
+		"grSimAddress": cfg.GrSimAddress,
+		"grSimPort":    cfg.GrSimPort,
 	}
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
@@ -78,8 +82,14 @@ func handleUpdateConfig(w http.ResponseWriter, r *http.Request, cfg *Config, res
 		return
 	}
 
+	// grSimポートの検証
+	if req.GrSimPort != 0 && (req.GrSimPort <= 0 || req.GrSimPort > 65535) {
+		http.Error(w, "Invalid grSim port number", http.StatusBadRequest)
+		return
+	}
+
 	// 設定を更新
-	cfg.Update(req.VisionPort, req.TrackedPort, req.RefereePort)
+	cfg.Update(req.VisionPort, req.TrackedPort, req.RefereePort, req.GrSimAddress, req.GrSimPort)
 
 	// ファイルに保存
 	if err := cfg.Save(); err != nil {

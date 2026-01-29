@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, provide, ref } from 'vue'
 
 const svg = ref<SVGElement>()
 const zoom = ref(1.0)
@@ -9,6 +9,10 @@ const mouseDownPoint = ref<{
   x: number
   y: number
 } | null>(null)
+const isShiftPressed = ref(false)
+
+// isDragModeをprovide（子コンポーネントがShiftキー押下状態を取得できるように）
+provide('isDragMode', isShiftPressed)
 
 function onScroll(event: WheelEvent) {
   const x = (event.offsetX - translation.value.x) / zoom.value
@@ -38,7 +42,10 @@ function onMouseMove(event: MouseEvent) {
 }
 
 function onMouseDown(event: MouseEvent) {
-  mouseDownPoint.value = { x: event.clientX, y: event.clientY }
+  // Shiftキー押下中はパン操作を無効化（ドラッグ移動モード）
+  if (!isShiftPressed.value) {
+    mouseDownPoint.value = { x: event.clientX, y: event.clientY }
+  }
 }
 
 function onMouseUp() {
@@ -52,10 +59,19 @@ function onMouseUp() {
   }
 }
 
-function onClick(event: KeyboardEvent) {
+function onKeyDown(event: KeyboardEvent) {
   if (event.key === ' ') {
     zoom.value = 1
     translation.value = { x: 0, y: 0 }
+  }
+  if (event.key === 'Shift') {
+    isShiftPressed.value = true
+  }
+}
+
+function onKeyUp(event: KeyboardEvent) {
+  if (event.key === 'Shift') {
+    isShiftPressed.value = false
   }
 }
 
@@ -66,14 +82,16 @@ const transform = computed(() => {
 })
 
 onMounted(() => {
-  document.addEventListener('keydown', onClick)
+  document.addEventListener('keydown', onKeyDown)
+  document.addEventListener('keyup', onKeyUp)
   svg.value?.addEventListener('wheel', onScroll)
   svg.value?.addEventListener('mousemove', onMouseMove)
   svg.value?.addEventListener('mousedown', onMouseDown)
   svg.value?.addEventListener('mouseup', onMouseUp)
 })
 onBeforeUnmount(() => {
-  document.removeEventListener('keydown', onClick)
+  document.removeEventListener('keydown', onKeyDown)
+  document.removeEventListener('keyup', onKeyUp)
   svg.value?.removeEventListener('wheel', onScroll)
   svg.value?.removeEventListener('mousemove', onMouseMove)
   svg.value?.removeEventListener('mousedown', onMouseDown)
