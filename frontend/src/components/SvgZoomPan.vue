@@ -9,10 +9,21 @@ const mouseDownPoint = ref<{
   x: number
   y: number
 } | null>(null)
-const isShiftPressed = ref(false)
 
-// isDragModeをprovide（子コンポーネントがShiftキー押下状態を取得できるように）
-provide('isDragMode', isShiftPressed)
+// 選択状態の管理
+const selectedObject = ref<{
+  type: 'robot' | 'ball'
+  id?: number
+  team?: 'YELLOW' | 'BLUE'
+} | null>(null)
+
+// 選択状態をprovide
+provide('selectedObject', selectedObject)
+
+// 移動イベントの定義
+const emit = defineEmits<{
+  moveObject: [x: number, y: number]
+}>()
 
 function onScroll(event: WheelEvent) {
   const x = (event.offsetX - translation.value.x) / zoom.value
@@ -42,10 +53,7 @@ function onMouseMove(event: MouseEvent) {
 }
 
 function onMouseDown(event: MouseEvent) {
-  // Shiftキー押下中はパン操作を無効化（ドラッグ移動モード）
-  if (!isShiftPressed.value) {
-    mouseDownPoint.value = { x: event.clientX, y: event.clientY }
-  }
+  mouseDownPoint.value = { x: event.clientX, y: event.clientY }
 }
 
 function onMouseUp() {
@@ -64,14 +72,25 @@ function onKeyDown(event: KeyboardEvent) {
     zoom.value = 1
     translation.value = { x: 0, y: 0 }
   }
-  if (event.key === 'Shift') {
-    isShiftPressed.value = true
+  if (event.key === 'Escape') {
+    selectedObject.value = null
   }
 }
 
-function onKeyUp(event: KeyboardEvent) {
-  if (event.key === 'Shift') {
-    isShiftPressed.value = false
+function onDoubleClick(event: MouseEvent) {
+  if (selectedObject.value !== null) {
+    // SVG座標を取得
+    const svgElement = svg.value
+    if (svgElement) {
+      const pt = svgElement.createSVGPoint()
+      pt.x = event.clientX
+      pt.y = event.clientY
+      const svgPt = pt.matrixTransform(svgElement.getScreenCTM()?.inverse())
+
+      // Y座標を反転してemit
+      emit('moveObject', svgPt.x, -svgPt.y)
+    }
+    event.preventDefault()
   }
 }
 
@@ -83,19 +102,19 @@ const transform = computed(() => {
 
 onMounted(() => {
   document.addEventListener('keydown', onKeyDown)
-  document.addEventListener('keyup', onKeyUp)
   svg.value?.addEventListener('wheel', onScroll)
   svg.value?.addEventListener('mousemove', onMouseMove)
   svg.value?.addEventListener('mousedown', onMouseDown)
   svg.value?.addEventListener('mouseup', onMouseUp)
+  svg.value?.addEventListener('dblclick', onDoubleClick)
 })
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', onKeyDown)
-  document.removeEventListener('keyup', onKeyUp)
   svg.value?.removeEventListener('wheel', onScroll)
   svg.value?.removeEventListener('mousemove', onMouseMove)
   svg.value?.removeEventListener('mousedown', onMouseDown)
   svg.value?.removeEventListener('mouseup', onMouseUp)
+  svg.value?.removeEventListener('dblclick', onDoubleClick)
 })
 </script>
 

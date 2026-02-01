@@ -3,6 +3,7 @@ import SvgRobot from '@/components/SvgRobot.vue'
 import SvgBall from '@/components/SvgBall.vue'
 import type { SSL_DetectionFrame } from '@/proto/vision/ssl_vision_detection_pb.ts'
 import { useGrSimReplacement } from '@/composables/grsim'
+import { inject, type Ref } from 'vue'
 
 const props = withDefaults(
   defineProps<{
@@ -16,29 +17,46 @@ const props = withDefaults(
 
 const { replaceBall, replaceRobot } = useGrSimReplacement()
 
-async function onBallDragEnd(x: number, y: number) {
+const selectedObject = inject<Ref<{
+  type: 'robot' | 'ball'
+  id?: number
+  team?: 'YELLOW' | 'BLUE'
+} | null>>('selectedObject')!
+
+async function onMoveObject(x: number, y: number) {
+  if (!selectedObject.value) return
+
   try {
-    await replaceBall(x, y)
+    if (selectedObject.value.type === 'ball') {
+      await replaceBall(x, y)
+    } else if (selectedObject.value.type === 'robot') {
+      // ロボットの現在の向きを取得
+      const robot =
+        selectedObject.value.team === 'YELLOW'
+          ? props.detectionFrame.robotsYellow.find((r) => r.robotId === selectedObject.value?.id)
+          : props.detectionFrame.robotsBlue.find((r) => r.robotId === selectedObject.value?.id)
+
+      if (robot) {
+        // orientationをラジアンから度に変換
+        const dirDeg = (robot.orientation * 180) / Math.PI
+        await replaceRobot(
+          x,
+          y,
+          dirDeg,
+          selectedObject.value.id!,
+          selectedObject.value.team === 'YELLOW'
+        )
+      }
+    }
   } catch (error) {
-    console.error('Failed to replace ball:', error)
+    console.error('Failed to move object:', error)
   }
 }
 
-async function onRobotDragEnd(
-  x: number,
-  y: number,
-  orientation: number,
-  id: number,
-  yellowTeam: boolean
-) {
-  try {
-    // orientationをラジアンから度に変換
-    const dirDeg = (orientation * 180) / Math.PI
-    await replaceRobot(x, y, dirDeg, id, yellowTeam)
-  } catch (error) {
-    console.error('Failed to replace robot:', error)
-  }
-}
+// 親コンポーネントから呼び出せるようにexposeする
+defineExpose({
+  onMoveObject,
+})
 </script>
 
 <template>
@@ -50,7 +68,6 @@ async function onRobotDragEnd(
     :y="s.y / 1000"
     :height="0"
     :draggable="true"
-    @drag-end="onBallDragEnd"
   />
   <SvgRobot
     v-for="(s, i) in detectionFrame.robotsYellow"
@@ -61,7 +78,6 @@ async function onRobotDragEnd(
     :id="s.robotId"
     :team-color="'YELLOW'"
     :draggable="true"
-    @drag-end="(x, y, orientation) => onRobotDragEnd(x, y, orientation, s.robotId, true)"
   />
   <SvgRobot
     v-for="(s, i) in detectionFrame.robotsBlue"
@@ -72,6 +88,5 @@ async function onRobotDragEnd(
     :id="s.robotId"
     :team-color="'BLUE'"
     :draggable="true"
-    @drag-end="(x, y, orientation) => onRobotDragEnd(x, y, orientation, s.robotId, false)"
   />
 </template>

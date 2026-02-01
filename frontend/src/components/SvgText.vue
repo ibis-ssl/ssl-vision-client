@@ -25,6 +25,7 @@ const style = computed((): CSSProperties => {
     textAnchor: 'middle',
     dominantBaseline: 'central',
     font: 'bold 0.007em sans-serif',
+    pointerEvents: 'none',
   }
 })
 </script>

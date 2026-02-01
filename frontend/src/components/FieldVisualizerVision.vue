@@ -24,6 +24,12 @@ const { referee } = useReferee()
 const { trackedFrame } = useTrackedFrame(activeSource)
 const { trackerSources } = useTrackedSources()
 
+const svgVisionRef = ref<InstanceType<typeof SvgVision>>()
+
+function onMoveObject(x: number, y: number) {
+  svgVisionRef.value?.onMoveObject(x, y)
+}
+
 const sources = computed(() => {
   return {
     vision: 'vision',
@@ -48,8 +54,9 @@ const layerVisibility = ref<LayerVisibility>({
       v-model:active-source="activeSource"
     />
     <div class="field-container" :class="{ 'with-referee-info': referee && layerVisibility.referee }">
-      <FieldVisualizer :field="field" :show-field-lines="layerVisibility.fieldLines">
+      <FieldVisualizer :field="field" :show-field-lines="layerVisibility.fieldLines" @move-object="onMoveObject">
         <SvgVision
+          ref="svgVisionRef"
           v-if="detectionFrame"
           :detection-frame="detectionFrame"
           :show-ball="layerVisibility.ball"

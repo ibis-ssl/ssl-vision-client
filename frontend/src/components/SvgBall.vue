@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, ref, type CSSProperties } from 'vue'
+import { computed, inject, type CSSProperties, type Ref } from 'vue'
 
 const props = defineProps<{
   x: number
@@ -8,15 +8,18 @@ const props = defineProps<{
   draggable?: boolean
 }>()
 
-const emit = defineEmits<{
-  dragEnd: [x: number, y: number]
-}>()
-
-const isDragMode = inject<{ value: boolean }>('isDragMode', { value: false })
-const isDragging = ref(false)
+const selectedObject = inject<Ref<{
+  type: 'robot' | 'ball'
+  id?: number
+  team?: 'YELLOW' | 'BLUE'
+} | null>>('selectedObject')!
 
 const radius = computed(() => {
   return 0.021 * (1 + 0.01 * props.height)
+})
+
+const isSelected = computed(() => {
+  return selectedObject.value?.type === 'ball'
 })
 
 const style = computed((): CSSProperties => {
@@ -28,35 +31,17 @@ const style = computed((): CSSProperties => {
 const highlightStyle = computed((): CSSProperties => {
   return {
     stroke: 'orange',
-    strokeWidth: 0.01,
+    strokeWidth: isSelected.value ? 0.02 : 0.01,
     fill: 'none',
-    cursor: isDragMode.value && props.draggable ? 'move' : 'default'
+    cursor: props.draggable ? 'pointer' : 'default'
   }
 })
 
-function onMouseDown(event: MouseEvent) {
-  if (isDragMode.value && props.draggable) {
-    isDragging.value = true
-    event.stopPropagation()
-  }
-}
-
-function onMouseUp(event: MouseEvent) {
-  if (isDragging.value) {
-    isDragging.value = false
-
-    // SVG座標を取得
-    const svg = (event.target as SVGElement).ownerSVGElement
-    if (svg) {
-      const pt = svg.createSVGPoint()
-      pt.x = event.clientX
-      pt.y = event.clientY
-      const svgPt = pt.matrixTransform(svg.getScreenCTM()?.inverse())
-
-      // Y座標を反転してemit
-      emit('dragEnd', svgPt.x, -svgPt.y)
+function onClick(event: MouseEvent) {
+  if (props.draggable) {
+    selectedObject.value = {
+      type: 'ball',
     }
-
     event.stopPropagation()
   }
 }
@@ -72,8 +57,7 @@ function onMouseUp(event: MouseEvent) {
       :cy="-y"
       :r="0.5"
       :style="highlightStyle"
-      @mousedown="onMouseDown"
-      @mouseup="onMouseUp"
+      @click="onClick"
     />
   </g>
 </template>

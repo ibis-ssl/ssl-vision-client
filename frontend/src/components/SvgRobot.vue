@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, ref } from 'vue'
+import { computed, inject, type Ref } from 'vue'
 import SvgText from '@/components/SvgText.vue'
 
 const props = defineProps<{
@@ -11,12 +11,11 @@ const props = defineProps<{
   draggable?: boolean
 }>()
 
-const emit = defineEmits<{
-  dragEnd: [x: number, y: number, orientation: number]
-}>()
-
-const isDragMode = inject<{ value: boolean }>('isDragMode', { value: false })
-const isDragging = ref(false)
+const selectedObject = inject<Ref<{
+  type: 'robot' | 'ball'
+  id?: number
+  team?: 'YELLOW' | 'BLUE'
+} | null>>('selectedObject')!
 
 const center2Dribbler = 0.075
 const radius = 0.09
@@ -39,39 +38,31 @@ const botShape = computed(() => {
   )
 })
 
+const isSelected = computed(() => {
+  return (
+    selectedObject.value?.type === 'robot' &&
+    selectedObject.value?.id === props.id &&
+    selectedObject.value?.team === props.teamColor
+  )
+})
+
 const style = computed(() => {
   return {
     stroke: 'black',
-    strokeWidth: 0.005,
+    strokeWidth: isSelected.value ? 0.01 : 0.005,
     strokeOpacity: 1,
     fill: props.teamColor == 'YELLOW' ? 'yellow' : 'blue',
-    cursor: isDragMode.value && props.draggable ? 'move' : 'default',
+    cursor: props.draggable ? 'pointer' : 'default',
   }
 })
 
-function onMouseDown(event: MouseEvent) {
-  if (isDragMode.value && props.draggable) {
-    isDragging.value = true
-    event.stopPropagation()
-  }
-}
-
-function onMouseUp(event: MouseEvent) {
-  if (isDragging.value) {
-    isDragging.value = false
-
-    // SVG座標を取得
-    const svg = (event.target as SVGElement).ownerSVGElement
-    if (svg) {
-      const pt = svg.createSVGPoint()
-      pt.x = event.clientX
-      pt.y = event.clientY
-      const svgPt = pt.matrixTransform(svg.getScreenCTM()?.inverse())
-
-      // Y座標を反転してemit（orientationは現在の値を維持）
-      emit('dragEnd', svgPt.x, -svgPt.y, props.orientation)
+function onClick(event: MouseEvent) {
+  if (props.draggable) {
+    selectedObject.value = {
+      type: 'robot',
+      id: props.id,
+      team: props.teamColor,
     }
-
     event.stopPropagation()
   }
 }
@@ -79,7 +70,7 @@ function onMouseUp(event: MouseEvent) {
 
 <template>
   <g>
-    <path :d="botShape" :style="style" @mousedown="onMouseDown" @mouseup="onMouseUp" />
+    <path :d="botShape" :style="style" @click="onClick" />
     <svg-text :x="x" :y="y" :text="robotId" :color="teamColor == 'YELLOW' ? 'black' : 'white'" />
   </g>
 </template>

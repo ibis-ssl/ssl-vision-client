@@ -12,6 +12,14 @@ const props = withDefaults(
   { showFieldLines: true }
 )
 
+const emit = defineEmits<{
+  moveObject: [x: number, y: number]
+}>()
+
+function onMoveObject(x: number, y: number) {
+  emit('moveObject', x, y)
+}
+
 const wrapperDiv = ref<HTMLDivElement>()
 const rotateField = ref(false)
 provide('rotate-field', rotateField)
@@ -60,7 +68,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="wrapper" ref="wrapperDiv">
-    <SvgZoomPan>
+    <SvgZoomPan @move-object="onMoveObject">
       <svg :viewBox="viewBox" width="100%" height="100%">
         <g :transform="transform">
           <!-- draw field background -->
