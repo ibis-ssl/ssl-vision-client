@@ -49,10 +49,18 @@ const isSelected = computed(() => {
 const style = computed(() => {
   return {
     stroke: 'black',
-    strokeWidth: isSelected.value ? 0.01 : 0.005,
+    strokeWidth: 0.005,
     strokeOpacity: 1,
     fill: props.teamColor == 'YELLOW' ? 'yellow' : 'blue',
     cursor: props.draggable ? 'pointer' : 'default',
+  }
+})
+
+const highlightStyle = computed(() => {
+  return {
+    stroke: '#00ff88',
+    strokeWidth: 0.015,
+    fill: 'none',
   }
 })
 
@@ -71,6 +79,14 @@ function onClick(event: MouseEvent) {
 <template>
   <g>
     <path :d="botShape" :style="style" @click="onClick" />
+    <!-- 選択時のハイライトサークル -->
+    <circle
+      v-if="isSelected"
+      :cx="x"
+      :cy="-y"
+      :r="radius * 1.3"
+      :style="highlightStyle"
+    />
     <svg-text :x="x" :y="y" :text="robotId" :color="teamColor == 'YELLOW' ? 'black' : 'white'" />
   </g>
 </template>

@@ -2,6 +2,7 @@ package grsim
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"sync"
 
@@ -65,7 +66,13 @@ func (s *Sender) SendReplacement(replacement *GrSim_Replacement) error {
 		return fmt.Errorf("not connected")
 	}
 
+	// grSimはcommandsフィールドも必要とする
+	// 空のcommandsでも必須フィールドを設定する必要がある
 	packet := &GrSim_Packet{
+		Commands: &GrSim_Commands{
+			Timestamp:    proto.Float64(0.0),
+			Isteamyellow: proto.Bool(false),
+		},
 		Replacement: replacement,
 	}
 

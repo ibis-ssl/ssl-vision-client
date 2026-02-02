@@ -8,7 +8,7 @@ import SvgGameEvents from '@/components/SvgGameEvents.vue'
 import SettingsPanel from '@/components/SettingsPanel.vue'
 import RefereeInfo from '@/components/RefereeInfo.vue'
 import type { LayerVisibility } from '@/components/LayerControl.vue'
-import { computed, ref } from 'vue'
+import { computed, inject, provide, ref, type Ref } from 'vue'
 import {
   useTrackedFrame,
   useTrackedSources,
@@ -25,6 +25,14 @@ const { trackedFrame } = useTrackedFrame(activeSource)
 const { trackerSources } = useTrackedSources()
 
 const svgVisionRef = ref<InstanceType<typeof SvgVision>>()
+
+// 選択状態をこのコンポーネントで管理し、配下全体でprovide
+const selectedObject = ref<{
+  type: 'robot' | 'ball'
+  id?: number
+  team?: 'YELLOW' | 'BLUE'
+} | null>(null)
+provide('selectedObject', selectedObject)
 
 function onMoveObject(x: number, y: number) {
   svgVisionRef.value?.onMoveObject(x, y)

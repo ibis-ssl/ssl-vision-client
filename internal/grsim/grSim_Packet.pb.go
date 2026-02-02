@@ -23,7 +23,8 @@ const (
 
 type GrSim_Packet struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Replacement   *GrSim_Replacement     `protobuf:"bytes,1,opt,name=replacement" json:"replacement,omitempty"`
+	Commands      *GrSim_Commands        `protobuf:"bytes,1,opt,name=commands" json:"commands,omitempty"`
+	Replacement   *GrSim_Replacement     `protobuf:"bytes,2,opt,name=replacement" json:"replacement,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -58,6 +59,13 @@ func (*GrSim_Packet) Descriptor() ([]byte, []int) {
 	return file_grsim_grSim_Packet_proto_rawDescGZIP(), []int{0}
 }
 
+func (x *GrSim_Packet) GetCommands() *GrSim_Commands {
+	if x != nil {
+		return x.Commands
+	}
+	return nil
+}
+
 func (x *GrSim_Packet) GetReplacement() *GrSim_Replacement {
 	if x != nil {
 		return x.Replacement
@@ -69,9 +77,10 @@ var File_grsim_grSim_Packet_proto protoreflect.FileDescriptor
 
 const file_grsim_grSim_Packet_proto_rawDesc = "" +
 	"\n" +
-	"\x18grsim/grSim_Packet.proto\x12\x05grSim\x1a\x1dgrsim/grSim_Replacement.proto\"J\n" +
-	"\fgrSim_Packet\x12:\n" +
-	"\vreplacement\x18\x01 \x01(\v2\x18.grSim.grSim_ReplacementR\vreplacementB\x8a\x01\n" +
+	"\x18grsim/grSim_Packet.proto\x12\x05grSim\x1a\x1agrsim/grSim_Commands.proto\x1a\x1dgrsim/grSim_Replacement.proto\"}\n" +
+	"\fgrSim_Packet\x121\n" +
+	"\bcommands\x18\x01 \x01(\v2\x15.grSim.grSim_CommandsR\bcommands\x12:\n" +
+	"\vreplacement\x18\x02 \x01(\v2\x18.grSim.grSim_ReplacementR\vreplacementB\x8a\x01\n" +
 	"\tcom.grSimB\x10GrSimPacketProtoP\x01Z7github.com/RoboCup-SSL/ssl-vision-client/internal/grsim\xa2\x02\x03GXX\xaa\x02\x05GrSim\xca\x02\x05GrSim\xe2\x02\x11GrSim\\GPBMetadata\xea\x02\x05GrSim"
 
 var (
@@ -89,15 +98,17 @@ func file_grsim_grSim_Packet_proto_rawDescGZIP() []byte {
 var file_grsim_grSim_Packet_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_grsim_grSim_Packet_proto_goTypes = []any{
 	(*GrSim_Packet)(nil),      // 0: grSim.grSim_Packet
-	(*GrSim_Replacement)(nil), // 1: grSim.grSim_Replacement
+	(*GrSim_Commands)(nil),    // 1: grSim.grSim_Commands
+	(*GrSim_Replacement)(nil), // 2: grSim.grSim_Replacement
 }
 var file_grsim_grSim_Packet_proto_depIdxs = []int32{
-	1, // 0: grSim.grSim_Packet.replacement:type_name -> grSim.grSim_Replacement
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	1, // 0: grSim.grSim_Packet.commands:type_name -> grSim.grSim_Commands
+	2, // 1: grSim.grSim_Packet.replacement:type_name -> grSim.grSim_Replacement
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_grsim_grSim_Packet_proto_init() }
@@ -105,6 +116,7 @@ func file_grsim_grSim_Packet_proto_init() {
 	if File_grsim_grSim_Packet_proto != nil {
 		return
 	}
+	file_grsim_grSim_Commands_proto_init()
 	file_grsim_grSim_Replacement_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{

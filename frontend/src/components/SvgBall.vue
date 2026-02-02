@@ -51,13 +51,23 @@ function onClick(event: MouseEvent) {
   <g>
     <circle :cx="x" :cy="-y" :r="radius" :style="style" />
 
-    <!-- ball highlighter -->
+    <!-- クリック可能エリア (透明、大きめ) -->
     <circle
       :cx="x"
       :cy="-y"
-      :r="0.5"
-      :style="highlightStyle"
+      :r="0.1"
+      fill="transparent"
+      :style="{ cursor: props.draggable ? 'pointer' : 'default' }"
       @click="onClick"
+    />
+
+    <!-- ball highlighter (選択時のみ表示) -->
+    <circle
+      v-if="isSelected"
+      :cx="x"
+      :cy="-y"
+      :r="radius * 3"
+      :style="highlightStyle"
     />
   </g>
 </template>

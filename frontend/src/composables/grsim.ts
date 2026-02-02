@@ -51,12 +51,14 @@ export function useGrSimReplacement() {
     yellowTeam: boolean
   ): Promise<void> => {
     try {
+      const requestData = { x, y, dir, id, yellowTeam } as RobotReplacementRequest;
+
       const response = await fetch(`${API_BASE}/robot`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ x, y, dir, id, yellowTeam } as RobotReplacementRequest),
+        body: JSON.stringify(requestData),
       });
 
       if (!response.ok) {

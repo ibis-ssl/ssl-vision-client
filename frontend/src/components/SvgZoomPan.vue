@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, provide, ref } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, ref, type Ref } from 'vue'
 
 const svg = ref<SVGElement>()
 const zoom = ref(1.0)
@@ -9,16 +9,18 @@ const mouseDownPoint = ref<{
   x: number
   y: number
 } | null>(null)
+const lastMousePosition = ref<{
+  clientX: number
+  clientY: number
+  target: EventTarget | null
+} | null>(null)
 
-// 選択状態の管理
-const selectedObject = ref<{
+// 親から提供されるselectedObjectをinject
+const selectedObject = inject<Ref<{
   type: 'robot' | 'ball'
   id?: number
   team?: 'YELLOW' | 'BLUE'
-} | null>(null)
-
-// 選択状態をprovide
-provide('selectedObject', selectedObject)
+} | null>>('selectedObject')!
 
 // 移動イベントの定義
 const emit = defineEmits<{
@@ -44,6 +46,13 @@ function onScroll(event: WheelEvent) {
 }
 
 function onMouseMove(event: MouseEvent) {
+  // マウス位置を記録（エンターキーでの移動に使用）
+  lastMousePosition.value = {
+    clientX: event.clientX,
+    clientY: event.clientY,
+    target: event.target,
+  }
+
   if (mouseDownPoint.value !== null) {
     activeTranslation.value = {
       x: event.clientX - mouseDownPoint.value.x,
@@ -67,6 +76,34 @@ function onMouseUp() {
   }
 }
 
+function moveSelectedObject(clientX: number, clientY: number, target?: EventTarget | null) {
+  if (selectedObject.value !== null) {
+    // SVG座標を取得（イベントターゲットからownerSVGElementを取得）
+    let svgElement: SVGSVGElement | null = null
+
+    if (target && target instanceof SVGElement) {
+      svgElement = target.ownerSVGElement
+    }
+
+    // フォールバック：svg.value を使用
+    if (!svgElement) {
+      svgElement = svg.value as SVGSVGElement | null
+    }
+
+    if (svgElement) {
+      const pt = svgElement.createSVGPoint()
+      pt.x = clientX
+      pt.y = clientY
+      const ctm = svgElement.getScreenCTM()
+      if (ctm) {
+        const svgPt = pt.matrixTransform(ctm.inverse())
+        // Y座標を反転してemit
+        emit('moveObject', svgPt.x, -svgPt.y)
+      }
+    }
+  }
+}
+
 function onKeyDown(event: KeyboardEvent) {
   if (event.key === ' ') {
     zoom.value = 1
@@ -75,23 +112,19 @@ function onKeyDown(event: KeyboardEvent) {
   if (event.key === 'Escape') {
     selectedObject.value = null
   }
+  if (event.key === 'Enter' && lastMousePosition.value) {
+    moveSelectedObject(
+      lastMousePosition.value.clientX,
+      lastMousePosition.value.clientY,
+      lastMousePosition.value.target
+    )
+    event.preventDefault()
+  }
 }
 
 function onDoubleClick(event: MouseEvent) {
-  if (selectedObject.value !== null) {
-    // SVG座標を取得
-    const svgElement = svg.value
-    if (svgElement) {
-      const pt = svgElement.createSVGPoint()
-      pt.x = event.clientX
-      pt.y = event.clientY
-      const svgPt = pt.matrixTransform(svgElement.getScreenCTM()?.inverse())
-
-      // Y座標を反転してemit
-      emit('moveObject', svgPt.x, -svgPt.y)
-    }
-    event.preventDefault()
-  }
+  moveSelectedObject(event.clientX, event.clientY, event.target)
+  event.preventDefault()
 }
 
 const transform = computed(() => {

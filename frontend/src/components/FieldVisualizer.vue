@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, provide, ref } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, provide, ref, type Ref } from 'vue'
 import SvgZoomPan from '@/components/SvgZoomPan.vue'
 import type { SSL_GeometryFieldSize } from '@/proto/vision/ssl_vision_geometry_pb.ts'
 import SvgFieldLines from '@/components/SvgFieldLines.vue'
@@ -15,6 +15,16 @@ const props = withDefaults(
 const emit = defineEmits<{
   moveObject: [x: number, y: number]
 }>()
+
+// 親から提供されるselectedObjectをinjectして、さらにprovide（子孫に伝播）
+const selectedObject = inject<Ref<{
+  type: 'robot' | 'ball'
+  id?: number
+  team?: 'YELLOW' | 'BLUE'
+} | null>>('selectedObject')
+if (selectedObject) {
+  provide('selectedObject', selectedObject)
+}
 
 function onMoveObject(x: number, y: number) {
   emit('moveObject', x, y)

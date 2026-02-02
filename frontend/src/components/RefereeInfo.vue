@@ -1,10 +1,21 @@
 <script setup lang="ts">
 import type { Referee } from '@/proto/gc/ssl_gc_referee_message_pb.ts'
-import { computed } from 'vue'
+import { computed, inject, type Ref } from 'vue'
 
 const props = defineProps<{
   referee: Referee
 }>()
+
+// 選択状態を取得
+const selectedObject = inject<Ref<{
+  type: 'robot' | 'ball'
+  id?: number
+  team?: 'YELLOW' | 'BLUE'
+} | null>>('selectedObject', { value: null } as Ref<{
+  type: 'robot' | 'ball'
+  id?: number
+  team?: 'YELLOW' | 'BLUE'
+} | null>)
 
 // ゲームステージの文字列変換
 const stageText = computed(() => {
@@ -67,6 +78,22 @@ const yellowScore = computed(() => props.referee.yellow?.score ?? 0)
 // チーム名
 const blueName = computed(() => props.referee.blue?.name || '')
 const yellowName = computed(() => props.referee.yellow?.name || '')
+
+// 選択状態の表示テキスト
+const selectedText = computed(() => {
+  if (!selectedObject.value) return '選択なし'
+
+  if (selectedObject.value.type === 'ball') {
+    return 'ボール'
+  }
+
+  if (selectedObject.value.type === 'robot') {
+    const team = selectedObject.value.team === 'YELLOW' ? 'イエロー' : 'ブルー'
+    return `${team} ロボット #${selectedObject.value.id}`
+  }
+
+  return '選択なし'
+})
 </script>
 
 <template>
@@ -90,6 +117,12 @@ const yellowName = computed(() => props.referee.yellow?.name || '')
     </div>
     <div class="info-section">
       <span class="value time">{{ timeText }}</span>
+    </div>
+    <div class="info-section selection">
+      <span class="label">選択:</span>
+      <span class="value selection-text" :class="{ selected: selectedObject }">
+        {{ selectedText }}
+      </span>
     </div>
   </div>
 </template>
@@ -173,6 +206,23 @@ const yellowName = computed(() => props.referee.yellow?.name || '')
 
 .separator {
   color: #666;
+  font-weight: bold;
+}
+
+.info-section.selection {
+  background-color: rgba(50, 50, 50, 0.8);
+  padding: 0.3em 0.8em;
+  border-radius: 4px;
+  border: 1px solid #444;
+}
+
+.selection-text {
+  color: #888;
+  font-size: 0.95em;
+}
+
+.selection-text.selected {
+  color: #00ff88;
   font-weight: bold;
 }
 </style>

@@ -4,6 +4,8 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv1";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv1";
+import type { grSim_Commands, grSim_CommandsJson } from "./grSim_Commands_pb";
+import { file_grsim_grSim_Commands } from "./grSim_Commands_pb";
 import type { grSim_Replacement, grSim_ReplacementJson } from "./grSim_Replacement_pb";
 import { file_grsim_grSim_Replacement } from "./grSim_Replacement_pb";
 import type { Message } from "@bufbuild/protobuf";
@@ -12,14 +14,19 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file grsim/grSim_Packet.proto.
  */
 export const file_grsim_grSim_Packet: GenFile = /*@__PURE__*/
-  fileDesc("ChhncnNpbS9nclNpbV9QYWNrZXQucHJvdG8SBWdyU2ltIj0KDGdyU2ltX1BhY2tldBItCgtyZXBsYWNlbWVudBgBIAEoCzIYLmdyU2ltLmdyU2ltX1JlcGxhY2VtZW50QooBCgljb20uZ3JTaW1CEEdyU2ltUGFja2V0UHJvdG9QAVo3Z2l0aHViLmNvbS9Sb2JvQ3VwLVNTTC9zc2wtdmlzaW9uLWNsaWVudC9pbnRlcm5hbC9ncnNpbaICA0dYWKoCBUdyU2ltygIFR3JTaW3iAhFHclNpbVxHUEJNZXRhZGF0YeoCBUdyU2lt", [file_grsim_grSim_Replacement]);
+  fileDesc("ChhncnNpbS9nclNpbV9QYWNrZXQucHJvdG8SBWdyU2ltImYKDGdyU2ltX1BhY2tldBInCghjb21tYW5kcxgBIAEoCzIVLmdyU2ltLmdyU2ltX0NvbW1hbmRzEi0KC3JlcGxhY2VtZW50GAIgASgLMhguZ3JTaW0uZ3JTaW1fUmVwbGFjZW1lbnRCigEKCWNvbS5nclNpbUIQR3JTaW1QYWNrZXRQcm90b1ABWjdnaXRodWIuY29tL1JvYm9DdXAtU1NML3NzbC12aXNpb24tY2xpZW50L2ludGVybmFsL2dyc2ltogIDR1hYqgIFR3JTaW3KAgVHclNpbeICEUdyU2ltXEdQQk1ldGFkYXRh6gIFR3JTaW0", [file_grsim_grSim_Commands, file_grsim_grSim_Replacement]);
 
 /**
  * @generated from message grSim.grSim_Packet
  */
 export type grSim_Packet = Message<"grSim.grSim_Packet"> & {
   /**
-   * @generated from field: optional grSim.grSim_Replacement replacement = 1;
+   * @generated from field: optional grSim.grSim_Commands commands = 1;
+   */
+  commands?: grSim_Commands;
+
+  /**
+   * @generated from field: optional grSim.grSim_Replacement replacement = 2;
    */
   replacement?: grSim_Replacement;
 };
@@ -29,7 +36,12 @@ export type grSim_Packet = Message<"grSim.grSim_Packet"> & {
  */
 export type grSim_PacketJson = {
   /**
-   * @generated from field: optional grSim.grSim_Replacement replacement = 1;
+   * @generated from field: optional grSim.grSim_Commands commands = 1;
+   */
+  commands?: grSim_CommandsJson;
+
+  /**
+   * @generated from field: optional grSim.grSim_Replacement replacement = 2;
    */
   replacement?: grSim_ReplacementJson;
 };
