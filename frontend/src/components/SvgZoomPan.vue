@@ -22,6 +22,9 @@ const selectedObject = inject<Ref<{
   team?: 'YELLOW' | 'BLUE'
 } | null>>('selectedObject')!
 
+// フィールドの回転状態をinject
+const rotateField = inject<Ref<boolean>>('rotate-field', ref(false))
+
 // 移動イベントの定義
 const emit = defineEmits<{
   moveObject: [x: number, y: number]
@@ -97,8 +100,16 @@ function moveSelectedObject(clientX: number, clientY: number, target?: EventTarg
       const ctm = svgElement.getScreenCTM()
       if (ctm) {
         const svgPt = pt.matrixTransform(ctm.inverse())
-        // Y座標を反転してemit
-        emit('moveObject', svgPt.x, -svgPt.y)
+
+        // フィールドが回転している場合は座標を変換
+        if (rotateField.value) {
+          // rotate(90)の逆変換: (x, y) → (y, -x)
+          // Y軸反転も考慮: emit('moveObject', y, x)
+          emit('moveObject', svgPt.y, svgPt.x)
+        } else {
+          // 通常時: Y座標を反転してemit
+          emit('moveObject', svgPt.x, -svgPt.y)
+        }
       }
     }
   }
