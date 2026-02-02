@@ -6,7 +6,7 @@ import SvgTracked from '@/components/SvgTracked.vue'
 import SvgBallPlacement from '@/components/SvgBallPlacement.vue'
 import SvgGameEvents from '@/components/SvgGameEvents.vue'
 import SettingsPanel from '@/components/SettingsPanel.vue'
-import RefereeInfo from '@/components/RefereeInfo.vue'
+import StatusBar from '@/components/StatusBar.vue'
 import type { LayerVisibility } from '@/components/LayerControl.vue'
 import { computed, inject, provide, ref, type Ref } from 'vue'
 import {
@@ -19,10 +19,13 @@ import { useReferee } from '@/composables/referee.ts'
 
 const activeSource = ref('vision')
 const { field } = useVisionGeometry()
-const { detectionFrame } = useVisionDetection(activeSource)
-const { referee } = useReferee()
+const { detectionFrame, connected: visionConnected } = useVisionDetection(activeSource)
+const { referee, connected: refereeConnected } = useReferee()
 const { trackedFrame } = useTrackedFrame(activeSource)
 const { trackerSources } = useTrackedSources()
+
+// grSim接続状態（将来の実装用に常にtrueと想定）
+const grsimConnected = ref(true)
 
 const svgVisionRef = ref<InstanceType<typeof SvgVision>>()
 
@@ -86,7 +89,16 @@ const layerVisibility = ref<LayerVisibility>({
         <SvgTracked v-if="trackedFrame" :tracked-frame="trackedFrame" />
       </FieldVisualizer>
     </div>
-    <RefereeInfo v-if="referee && layerVisibility.referee" :referee="referee" />
+    <StatusBar
+      v-if="referee && layerVisibility.referee"
+      :referee="referee"
+      :active-source="activeSource"
+      :sources="sources"
+      :vision-connected="visionConnected"
+      :referee-connected="refereeConnected"
+      :grsim-connected="grsimConnected"
+      @update:active-source="activeSource = $event"
+    />
   </div>
 </template>
 

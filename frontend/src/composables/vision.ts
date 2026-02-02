@@ -40,13 +40,15 @@ export const SOURCE_VISION = 'vision'
 export const useVisionDetection = (activeSource: MaybeRefOrGetter<string>) => {
   const enabled = computed(() => toValue(activeSource) === SOURCE_VISION)
 
-  const { message: detectionFrame } = useWebSocketProtobuf<SSL_DetectionFrame>(
+  const { message: detectionFrame, status } = useWebSocketProtobuf<SSL_DetectionFrame>(
     '/api/vision/detection',
     SSL_DetectionFrameSchema,
     enabled,
   )
 
-  return { detectionFrame }
+  const connected = computed(() => status.value === 'OPEN')
+
+  return { detectionFrame, connected }
 }
 
 export const useVisionGeometry = () => {

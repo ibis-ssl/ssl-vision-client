@@ -2,9 +2,22 @@
 import type { Referee } from '@/proto/gc/ssl_gc_referee_message_pb.ts'
 import { computed, inject, type Ref } from 'vue'
 
-const props = defineProps<{
+interface Props {
   referee: Referee
-}>()
+  activeSource: string
+  sources: Record<string, string>
+  visionConnected: boolean
+  refereeConnected: boolean
+  grsimConnected: boolean
+}
+
+const props = defineProps<Props>()
+
+interface Emits {
+  (e: 'update:activeSource', source: string): void
+}
+
+const emit = defineEmits<Emits>()
 
 // 選択状態を取得
 const selectedObject = inject<Ref<{
@@ -94,10 +107,35 @@ const selectedText = computed(() => {
 
   return '選択なし'
 })
+
+// ソース切替
+const sourceOptions = computed(() => Object.entries(props.sources))
+
+function changeSource(source: string) {
+  emit('update:activeSource', source)
+}
 </script>
 
 <template>
-  <div id="referee-info">
+  <div id="status-bar">
+    <!-- 接続状態 -->
+    <div class="info-section connection-status">
+      <span class="label">接続:</span>
+      <span class="connection-indicator" :class="{ connected: visionConnected }" title="Vision">V</span>
+      <span class="connection-indicator" :class="{ connected: refereeConnected }" title="Referee">R</span>
+      <span class="connection-indicator" :class="{ connected: grsimConnected }" title="grSim">G</span>
+    </div>
+
+    <!-- ソース切替 -->
+    <div class="info-section source-selector">
+      <span class="label">ソース:</span>
+      <select :value="props.activeSource" @change="changeSource(($event.target as HTMLSelectElement).value)" class="source-select">
+        <option v-for="[key, name] in sourceOptions" :key="key" :value="key">
+          {{ name }}
+        </option>
+      </select>
+    </div>
+
     <div class="info-section">
       <span class="value">{{ stageText }}</span>
     </div>
@@ -128,7 +166,7 @@ const selectedText = computed(() => {
 </template>
 
 <style scoped>
-#referee-info {
+#status-bar {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -224,5 +262,57 @@ const selectedText = computed(() => {
 .selection-text.selected {
   color: #00ff88;
   font-weight: bold;
+}
+
+/* 接続状態インジケータ */
+.connection-status {
+  gap: 0.3em;
+}
+
+.connection-indicator {
+  display: inline-block;
+  width: 1.5em;
+  height: 1.5em;
+  line-height: 1.5em;
+  text-align: center;
+  border-radius: 3px;
+  background-color: #ff4444;
+  color: white;
+  font-size: 0.8em;
+  font-weight: bold;
+  transition: background-color 0.3s;
+}
+
+.connection-indicator.connected {
+  background-color: #44ff44;
+  color: black;
+}
+
+/* ソース切替 */
+.source-selector {
+  background-color: rgba(50, 50, 50, 0.8);
+  padding: 0.3em 0.8em;
+  border-radius: 4px;
+  border: 1px solid #444;
+}
+
+.source-select {
+  background-color: rgba(30, 30, 30, 0.9);
+  color: white;
+  border: 1px solid #666;
+  border-radius: 3px;
+  padding: 0.2em 0.5em;
+  font-family: monospace;
+  font-size: 0.9em;
+  cursor: pointer;
+}
+
+.source-select:hover {
+  border-color: #888;
+}
+
+.source-select:focus {
+  outline: none;
+  border-color: #00ff88;
 }
 </style>
