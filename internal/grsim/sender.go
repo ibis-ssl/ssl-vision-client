@@ -2,7 +2,6 @@ package grsim
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"sync"
 
