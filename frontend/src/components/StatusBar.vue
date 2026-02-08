@@ -172,6 +172,7 @@ function changeSource(source: string) {
   align-items: center;
   gap: 2em;
   padding: 0.8em 1em;
+  box-sizing: border-box;
   background-color: rgba(0, 0, 0, 0.8);
   color: white;
   width: 100%;
