@@ -4,6 +4,7 @@ import (
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/config"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/gc"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/grsim"
+	"github.com/RoboCup-SSL/ssl-vision-client/internal/replay"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/tracked"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/vision"
 	"net/http"
@@ -16,6 +17,7 @@ func NewServer(
 	RefereeProvider func() *gc.Referee,
 	cfg *config.Config,
 	restarter config.ReceiverRestarter,
+	replayService replay.Service,
 	grSimSender *grsim.Sender,
 ) http.Handler {
 	mux := http.NewServeMux()
@@ -27,6 +29,7 @@ func NewServer(
 		RefereeProvider,
 		cfg,
 		restarter,
+		replayService,
 		grSimSender,
 	)
 	return mux

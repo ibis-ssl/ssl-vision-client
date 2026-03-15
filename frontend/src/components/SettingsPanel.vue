@@ -8,6 +8,13 @@ const { config, loading, error, successMessage, fetchConfig, updateConfig } = us
 // Props for layer and source control
 const props = defineProps<{
   sources: { [key: string]: string }
+  mode: 'live' | 'replay'
+  replayLoaded: boolean
+  replayFileName: string
+}>()
+const emit = defineEmits<{
+  (e: 'update:mode', mode: 'live' | 'replay'): void
+  (e: 'replay-file-selected', file: File): void
 }>()
 
 const layerVisibility = defineModel<LayerVisibility>('layerVisibility', { required: true })
@@ -61,6 +68,18 @@ const toggleLayer = (layerName: keyof LayerVisibility) => {
 
 const updateActiveSource = (sourceId: string) => {
   activeSource.value = sourceId
+}
+
+const updateMode = (mode: 'live' | 'replay') => {
+  emit('update:mode', mode)
+}
+
+const onReplayFileSelected = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (file) {
+    emit('replay-file-selected', file)
+  }
 }
 </script>
 
@@ -122,6 +141,55 @@ const updateActiveSource = (sourceId: string) => {
             />
             <span>{{ sourceName }}</span>
           </label>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Data Mode</div>
+        <div class="source-controls">
+          <label class="source-item">
+            <input
+              type="radio"
+              value="live"
+              name="data-mode"
+              :checked="props.mode === 'live'"
+              @change="updateMode('live')"
+            />
+            <span>Live UDP</span>
+          </label>
+          <label class="source-item">
+            <input
+              type="radio"
+              value="replay"
+              name="data-mode"
+              :checked="props.mode === 'replay'"
+              @change="updateMode('replay')"
+            />
+            <span>Replay Log</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Replay File</div>
+        <div class="setting-group">
+          <input
+            id="replay-file"
+            name="replay-file"
+            type="file"
+            accept=".log,.gz,.log.gz"
+            :disabled="loading"
+            @change="onReplayFileSelected"
+          />
+          <div class="label-text" v-if="props.replayFileName">
+            読込中ファイル: {{ props.replayFileName }}
+          </div>
+          <div class="label-text" v-else-if="props.replayLoaded">
+            ログを読み込み済み
+          </div>
+          <div class="label-text" v-else>
+            .log または .log.gz を選択
+          </div>
         </div>
       </div>
 

@@ -16,6 +16,7 @@ import {
   useVisionGeometry,
 } from '@/composables/vision.ts'
 import { useReferee } from '@/composables/referee.ts'
+import { useReplay } from '@/composables/replay.ts'
 
 const activeSource = ref('vision')
 const { field } = useVisionGeometry()
@@ -23,6 +24,8 @@ const { detectionFrame, connected: visionConnected } = useVisionDetection(active
 const { referee, connected: refereeConnected } = useReferee()
 const { trackedFrame } = useTrackedFrame(activeSource)
 const { trackerSources } = useTrackedSources()
+const replay = useReplay()
+const replayState = replay.state
 
 // grSim接続状態（将来の実装用に常にtrueと想定）
 const grsimConnected = ref(true)
@@ -55,16 +58,35 @@ const layerVisibility = ref<LayerVisibility>({
   fieldLines: true,
   fouls: true,
 })
+
+async function onModeUpdate(mode: 'live' | 'replay') {
+  await replay.setMode(mode)
+}
+
+async function onReplayFileSelected(file: File) {
+  await replay.uploadFile(file)
+}
 </script>
 
 <template>
   <div class="visualizer-container">
     <SettingsPanel
       :sources="sources"
+      :mode="replayState.mode"
+      :replay-loaded="replayState.loaded"
+      :replay-file-name="replayState.fileName"
       v-model:layer-visibility="layerVisibility"
       v-model:active-source="activeSource"
+      @update:mode="onModeUpdate"
+      @replay-file-selected="onReplayFileSelected"
     />
-    <div class="field-container" :class="{ 'with-referee-info': referee && layerVisibility.referee }">
+    <div
+      class="field-container"
+      :class="{
+        'with-referee-info': referee && layerVisibility.referee,
+        'with-replay-controls': replayState.mode === 'replay',
+      }"
+    >
       <FieldVisualizer :field="field" :show-field-lines="layerVisibility.fieldLines" @move-object="onMoveObject">
         <SvgVision
           ref="svgVisionRef"
@@ -97,7 +119,13 @@ const layerVisibility = ref<LayerVisibility>({
       :vision-connected="visionConnected"
       :referee-connected="refereeConnected"
       :grsim-connected="grsimConnected"
+      :replay-state="replayState"
       @update:active-source="activeSource = $event"
+      @replay-play="replay.play"
+      @replay-pause="replay.pause"
+      @replay-seek="replay.seek"
+      @replay-step="replay.step"
+      @replay-rate="replay.setRate"
     />
   </div>
 </template>
@@ -116,5 +144,9 @@ const layerVisibility = ref<LayerVisibility>({
 
 .field-container.with-referee-info {
   height: calc(100% - 4em);
+}
+
+.field-container.with-replay-controls {
+  height: calc(100% - 8em);
 }
 </style>

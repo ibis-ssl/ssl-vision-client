@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Referee } from '@/proto/gc/ssl_gc_referee_message_pb.ts'
+import type { ReplayState } from '@/composables/replay.ts'
 import { computed, inject, type Ref } from 'vue'
 
 interface Props {
@@ -9,17 +10,22 @@ interface Props {
   visionConnected: boolean
   refereeConnected: boolean
   grsimConnected: boolean
+  replayState: ReplayState
 }
 
 const props = defineProps<Props>()
 
 interface Emits {
   (e: 'update:activeSource', source: string): void
+  (e: 'replay-play'): void
+  (e: 'replay-pause'): void
+  (e: 'replay-seek', positionNs: number): void
+  (e: 'replay-step', delta: number): void
+  (e: 'replay-rate', rate: number): void
 }
 
 const emit = defineEmits<Emits>()
 
-// 選択状態を取得
 const selectedObject = inject<Ref<{
   type: 'robot' | 'ball'
   id?: number
@@ -30,27 +36,26 @@ const selectedObject = inject<Ref<{
   team?: 'YELLOW' | 'BLUE'
 } | null>)
 
-// ゲームステージの文字列変換
 const stageText = computed(() => {
   const stageMap: { [key: number]: string } = {
-    0: 'NORMAL_FIRST_HALF',
-    1: 'NORMAL_SECOND_HALF',
-    2: 'EXTRA_FIRST_HALF',
-    3: 'EXTRA_SECOND_HALF',
-    4: 'PENALTY_SHOOTOUT',
-    5: 'PENALTY_SHOOTOUT_BREAK',
-    6: 'NORMAL_FIRST_HALF_PRE',
-    7: 'NORMAL_SECOND_HALF_PRE',
-    8: 'EXTRA_FIRST_HALF_PRE',
+    0: 'NORMAL_FIRST_HALF_PRE',
+    1: 'NORMAL_FIRST_HALF',
+    2: 'NORMAL_HALF_TIME',
+    3: 'NORMAL_SECOND_HALF_PRE',
+    4: 'NORMAL_SECOND_HALF',
+    5: 'EXTRA_TIME_BREAK',
+    6: 'EXTRA_FIRST_HALF_PRE',
+    7: 'EXTRA_FIRST_HALF',
+    8: 'EXTRA_HALF_TIME',
     9: 'EXTRA_SECOND_HALF_PRE',
-    10: 'PENALTY_SHOOTOUT_POST',
-    11: 'POST_GAME',
-    12: 'EXTRA_TIME_BREAK',
+    10: 'EXTRA_SECOND_HALF',
+    11: 'PENALTY_SHOOTOUT_BREAK',
+    12: 'PENALTY_SHOOTOUT',
+    13: 'POST_GAME',
   }
   return stageMap[props.referee.stage] || `STAGE_${props.referee.stage}`
 })
 
-// コマンドの文字列変換
 const commandText = computed(() => {
   const commandMap: { [key: number]: string } = {
     0: 'HALT',
@@ -75,7 +80,6 @@ const commandText = computed(() => {
   return commandMap[props.referee.command] || `COMMAND_${props.referee.command}`
 })
 
-// 時間の変換（マイクロ秒から秒へ）
 const timeText = computed(() => {
   if (props.referee.stageTimeLeft === undefined) return '--:--'
   const seconds = Math.floor(Number(props.referee.stageTimeLeft) / 1000000)
@@ -84,83 +88,143 @@ const timeText = computed(() => {
   return `${minutes}:${secs.toString().padStart(2, '0')}`
 })
 
-// スコア
 const blueScore = computed(() => props.referee.blue?.score ?? 0)
 const yellowScore = computed(() => props.referee.yellow?.score ?? 0)
-
-// チーム名
 const blueName = computed(() => props.referee.blue?.name || '')
 const yellowName = computed(() => props.referee.yellow?.name || '')
 
-// 選択状態の表示テキスト
 const selectedText = computed(() => {
   if (!selectedObject.value) return '選択なし'
-
-  if (selectedObject.value.type === 'ball') {
-    return 'ボール'
-  }
-
+  if (selectedObject.value.type === 'ball') return 'ボール'
   if (selectedObject.value.type === 'robot') {
     const team = selectedObject.value.team === 'YELLOW' ? 'イエロー' : 'ブルー'
     return `${team} ロボット #${selectedObject.value.id}`
   }
-
   return '選択なし'
 })
 
-// ソース切替
 const sourceOptions = computed(() => Object.entries(props.sources))
+const replayMode = computed(() => props.replayState.mode === 'replay')
+const replayDuration = computed(() => Math.max(props.replayState.durationNs, 0))
+const replayPosition = computed(() => Math.min(props.replayState.positionNs, replayDuration.value))
+
+const replayAnnotations = computed(() => {
+  const duration = replayDuration.value
+  if (duration <= 0) return []
+  return props.replayState.annotations.map((a) => ({
+    ...a,
+    left: (a.timestampNs / duration) * 100,
+  }))
+})
 
 function changeSource(source: string) {
   emit('update:activeSource', source)
 }
+
+function formatTimeNs(ns: number): string {
+  const sec = Math.max(0, Math.floor(ns / 1e9))
+  const m = Math.floor(sec / 60)
+  const s = sec % 60
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
+function onSeek(event: Event) {
+  const el = event.target as HTMLInputElement
+  emit('replay-seek', Number(el.value))
+}
+
+function togglePlayPause() {
+  if (props.replayState.playing) {
+    emit('replay-pause')
+  } else {
+    emit('replay-play')
+  }
+}
+
+function onRateChange(event: Event) {
+  const el = event.target as HTMLSelectElement
+  emit('replay-rate', Number(el.value))
+}
 </script>
 
 <template>
-  <div id="status-bar">
-    <!-- 接続状態 -->
-    <div class="info-section connection-status">
-      <span class="label">接続:</span>
-      <span class="connection-indicator" :class="{ connected: visionConnected }" title="Vision">V</span>
-      <span class="connection-indicator" :class="{ connected: refereeConnected }" title="Referee">R</span>
-      <span class="connection-indicator" :class="{ connected: grsimConnected }" title="grSim">G</span>
+  <div id="status-bar" :class="{ 'with-replay': replayMode }">
+    <div class="main-row">
+      <div class="info-section connection-status">
+        <span class="label">接続:</span>
+        <span class="connection-indicator" :class="{ connected: visionConnected }" title="Vision">V</span>
+        <span class="connection-indicator" :class="{ connected: refereeConnected }" title="Referee">R</span>
+        <span class="connection-indicator" :class="{ connected: grsimConnected }" title="grSim">G</span>
+      </div>
+
+      <div class="info-section source-selector">
+        <span class="label">ソース:</span>
+        <select :value="props.activeSource" @change="changeSource(($event.target as HTMLSelectElement).value)" class="source-select">
+          <option v-for="[key, name] in sourceOptions" :key="key" :value="key">
+            {{ name }}
+          </option>
+        </select>
+      </div>
+
+      <div class="info-section"><span class="value">{{ stageText }}</span></div>
+      <div class="info-section"><span class="value command">{{ commandText }}</span></div>
+
+      <div class="info-section score">
+        <span class="team blue">
+          <span v-if="blueName" class="team-name">{{ blueName }}</span>
+          <span class="team-score">{{ blueScore }}</span>
+        </span>
+        <span class="separator">-</span>
+        <span class="team yellow">
+          <span v-if="yellowName" class="team-name">{{ yellowName }}</span>
+          <span class="team-score">{{ yellowScore }}</span>
+        </span>
+      </div>
+
+      <div class="info-section"><span class="value time">{{ timeText }}</span></div>
+      <div class="info-section selection">
+        <span class="label">選択:</span>
+        <span class="value selection-text" :class="{ selected: selectedObject }">{{ selectedText }}</span>
+      </div>
     </div>
 
-    <!-- ソース切替 -->
-    <div class="info-section source-selector">
-      <span class="label">ソース:</span>
-      <select :value="props.activeSource" @change="changeSource(($event.target as HTMLSelectElement).value)" class="source-select">
-        <option v-for="[key, name] in sourceOptions" :key="key" :value="key">
-          {{ name }}
-        </option>
-      </select>
-    </div>
+    <div v-if="replayMode" class="replay-row">
+      <div class="replay-controls">
+        <button class="replay-button" @click="emit('replay-step', -1)">◀◀</button>
+        <button class="replay-button" @click="togglePlayPause">{{ props.replayState.playing ? 'Pause' : 'Play' }}</button>
+        <button class="replay-button" @click="emit('replay-step', 1)">▶▶</button>
+        <select class="replay-rate" :value="props.replayState.rate" @change="onRateChange">
+          <option :value="0.25">0.25x</option>
+          <option :value="0.5">0.5x</option>
+          <option :value="1">1x</option>
+          <option :value="1.5">1.5x</option>
+          <option :value="2">2x</option>
+        </select>
+      </div>
 
-    <div class="info-section">
-      <span class="value">{{ stageText }}</span>
-    </div>
-    <div class="info-section">
-      <span class="value command">{{ commandText }}</span>
-    </div>
-    <div class="info-section score">
-      <span class="team blue">
-        <span v-if="blueName" class="team-name">{{ blueName }}</span>
-        <span class="team-score">{{ blueScore }}</span>
-      </span>
-      <span class="separator">-</span>
-      <span class="team yellow">
-        <span v-if="yellowName" class="team-name">{{ yellowName }}</span>
-        <span class="team-score">{{ yellowScore }}</span>
-      </span>
-    </div>
-    <div class="info-section">
-      <span class="value time">{{ timeText }}</span>
-    </div>
-    <div class="info-section selection">
-      <span class="label">選択:</span>
-      <span class="value selection-text" :class="{ selected: selectedObject }">
-        {{ selectedText }}
-      </span>
+      <div class="timeline-wrap">
+        <div class="timeline-markers">
+          <span
+            v-for="(annotation, idx) in replayAnnotations"
+            :key="`ann-${idx}-${annotation.timestampNs}`"
+            class="timeline-marker"
+            :style="{ left: `${annotation.left}%` }"
+            :title="annotation.label"
+          />
+        </div>
+        <input
+          class="timeline-slider"
+          type="range"
+          min="0"
+          :max="replayDuration"
+          :value="replayPosition"
+          @input="onSeek"
+        />
+      </div>
+
+      <div class="replay-time">
+        {{ formatTimeNs(replayPosition) }} / {{ formatTimeNs(replayDuration) }}
+      </div>
     </div>
   </div>
 </template>
@@ -168,9 +232,8 @@ function changeSource(source: string) {
 <style scoped>
 #status-bar {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 2em;
+  flex-direction: column;
+  gap: 0.6em;
   padding: 0.8em 1em;
   box-sizing: border-box;
   background-color: rgba(0, 0, 0, 0.8);
@@ -181,6 +244,14 @@ function changeSource(source: string) {
   left: 0;
   z-index: 100;
   font-family: monospace;
+}
+
+.main-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5em;
+  flex-wrap: wrap;
 }
 
 .info-section {
@@ -248,7 +319,8 @@ function changeSource(source: string) {
   font-weight: bold;
 }
 
-.info-section.selection {
+.info-section.selection,
+.source-selector {
   background-color: rgba(50, 50, 50, 0.8);
   padding: 0.3em 0.8em;
   border-radius: 4px;
@@ -265,7 +337,6 @@ function changeSource(source: string) {
   font-weight: bold;
 }
 
-/* 接続状態インジケータ */
 .connection-status {
   gap: 0.3em;
 }
@@ -281,20 +352,11 @@ function changeSource(source: string) {
   color: white;
   font-size: 0.8em;
   font-weight: bold;
-  transition: background-color 0.3s;
 }
 
 .connection-indicator.connected {
   background-color: #44ff44;
   color: black;
-}
-
-/* ソース切替 */
-.source-selector {
-  background-color: rgba(50, 50, 50, 0.8);
-  padding: 0.3em 0.8em;
-  border-radius: 4px;
-  border: 1px solid #444;
 }
 
 .source-select {
@@ -308,12 +370,73 @@ function changeSource(source: string) {
   cursor: pointer;
 }
 
-.source-select:hover {
-  border-color: #888;
+.replay-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.8em;
+  align-items: center;
 }
 
-.source-select:focus {
-  outline: none;
-  border-color: #00ff88;
+.replay-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+}
+
+.replay-button {
+  border: 1px solid #666;
+  background: #222;
+  color: white;
+  border-radius: 4px;
+  padding: 0.2em 0.6em;
+  cursor: pointer;
+}
+
+.replay-rate {
+  border: 1px solid #666;
+  background: #222;
+  color: white;
+  border-radius: 4px;
+  padding: 0.2em;
+}
+
+.timeline-wrap {
+  position: relative;
+}
+
+.timeline-slider {
+  width: 100%;
+}
+
+.timeline-markers {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  pointer-events: none;
+}
+
+.timeline-marker {
+  position: absolute;
+  width: 2px;
+  height: 10px;
+  background: #ffd700;
+  transform: translateX(-1px) translateY(-50%);
+}
+
+.replay-time {
+  min-width: 90px;
+  text-align: right;
+  color: #ddd;
+}
+
+@media (max-width: 900px) {
+  .replay-row {
+    grid-template-columns: 1fr;
+    gap: 0.5em;
+  }
+  .replay-time {
+    text-align: left;
+  }
 }
 </style>
