@@ -127,6 +127,56 @@ function onToggleLayer(layerName: keyof LayerVisibility) {
   layerVisibility.value[layerName] = !layerVisibility.value[layerName]
 }
 
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  if (target.isContentEditable) return true
+  if (target instanceof HTMLInputElement) {
+    // Keep shortcuts active while range slider is focused.
+    return target.type !== 'range'
+  }
+  const tag = target.tagName
+  return tag === 'TEXTAREA' || tag === 'SELECT'
+}
+
+async function onWindowKeyDown(event: KeyboardEvent) {
+  if (isTypingTarget(event.target)) return
+  if (replayState.value.mode !== 'replay') return
+  const seekDeltaNs = 5 * 1e9
+
+  if (event.code === 'Space') {
+    event.preventDefault()
+    if (event.repeat) return
+    if (replayState.value.playing) {
+      await replay.pause()
+    } else {
+      await replay.play()
+    }
+    return
+  }
+
+  if (event.key === 'ArrowLeft') {
+    event.preventDefault()
+    if (event.shiftKey) {
+      const next = Math.max(0, replayState.value.positionNs - seekDeltaNs)
+      await replay.seek(next)
+      return
+    }
+    await replay.step(-1)
+    return
+  }
+
+  if (event.key === 'ArrowRight') {
+    event.preventDefault()
+    if (event.shiftKey) {
+      const max = Math.max(0, replayState.value.durationNs)
+      const next = Math.min(max, replayState.value.positionNs + seekDeltaNs)
+      await replay.seek(next)
+      return
+    }
+    await replay.step(1)
+  }
+}
+
 function getDroppedFile(event: DragEvent): File | null {
   const files = event.dataTransfer?.files
   if (!files || files.length === 0) return null
@@ -158,19 +208,17 @@ async function onWindowDrop(event: DragEvent) {
 }
 
 onMounted(() => {
+  window.addEventListener('keydown', onWindowKeyDown)
   document.addEventListener('dragenter', onWindowDragOver, true)
   document.addEventListener('dragover', onWindowDragOver, true)
   document.addEventListener('drop', onWindowDrop, true)
-  window.addEventListener('dragover', onWindowDragOver, true)
-  window.addEventListener('drop', onWindowDrop, true)
 })
 
 onUnmounted(() => {
+  window.removeEventListener('keydown', onWindowKeyDown)
   document.removeEventListener('dragenter', onWindowDragOver, true)
   document.removeEventListener('dragover', onWindowDragOver, true)
   document.removeEventListener('drop', onWindowDrop, true)
-  window.removeEventListener('dragover', onWindowDragOver, true)
-  window.removeEventListener('drop', onWindowDrop, true)
 })
 </script>
 

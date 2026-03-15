@@ -84,9 +84,6 @@ export function useReplay() {
         throw new Error(text || 'Upload failed')
       }
       state.value = await res.json()
-      if (state.value.loaded && state.value.mode !== 'replay') {
-        state.value = { ...state.value, mode: 'replay' }
-      }
       error.value = null
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Upload failed'

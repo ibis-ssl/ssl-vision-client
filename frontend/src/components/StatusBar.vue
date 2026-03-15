@@ -344,17 +344,20 @@ onUnmounted(() => {
     </div>
 
     <div v-if="replayMode" class="replay-row">
-      <div class="replay-controls">
-        <button class="replay-button" @click="emit('replay-step', -1)">◀◀</button>
-        <button class="replay-button" @click="togglePlayPause">{{ props.replayState.playing ? 'Pause' : 'Play' }}</button>
-        <button class="replay-button" @click="emit('replay-step', 1)">▶▶</button>
-        <select class="replay-rate" :value="props.replayState.rate" @change="onRateChange">
-          <option :value="0.25">0.25x</option>
-          <option :value="0.5">0.5x</option>
-          <option :value="1">1x</option>
-          <option :value="1.5">1.5x</option>
-          <option :value="2">2x</option>
-        </select>
+      <div class="replay-controls" role="group" aria-label="Replay controls">
+        <button class="replay-button ghost" title="Previous frame" @click="emit('replay-step', -1)">◀◀</button>
+        <button class="replay-button primary" title="Play or pause" @click="togglePlayPause">{{ props.replayState.playing ? 'Pause' : 'Play' }}</button>
+        <button class="replay-button ghost" title="Next frame" @click="emit('replay-step', 1)">▶▶</button>
+        <label class="rate-select-wrap">
+          <span>Rate</span>
+          <select class="replay-rate" :value="props.replayState.rate" @change="onRateChange">
+            <option :value="0.25">0.25x</option>
+            <option :value="0.5">0.5x</option>
+            <option :value="1">1x</option>
+            <option :value="1.5">1.5x</option>
+            <option :value="2">2x</option>
+          </select>
+        </label>
       </div>
 
       <div class="timeline-wrap">
@@ -378,7 +381,9 @@ onUnmounted(() => {
       </div>
 
       <div class="replay-time">
-        {{ formatTimeNs(replayPosition) }} / {{ formatTimeNs(replayDuration) }}
+        <span class="current-time">{{ formatTimeNs(replayPosition) }}</span>
+        <span class="time-separator">/</span>
+        <span>{{ formatTimeNs(replayDuration) }}</span>
       </div>
     </div>
 
@@ -538,39 +543,76 @@ onUnmounted(() => {
 .replay-row {
   display: grid;
   grid-template-columns: auto 1fr auto;
-  gap: 0.8em;
+  gap: 0.9em;
   align-items: center;
+  background: linear-gradient(180deg, rgba(10, 18, 29, 0.96), rgba(6, 12, 21, 0.96));
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.55em 0.65em;
 }
 
 .replay-controls {
   display: flex;
   align-items: center;
-  gap: 0.4em;
+  gap: 0.45em;
+  flex-wrap: wrap;
 }
 
 .replay-button {
-  border: 1px solid var(--line-strong);
-  background: rgba(10, 14, 18, 0.9);
+  border: 1px solid transparent;
   color: white;
   border-radius: 999px;
-  padding: 0.25em 0.75em;
+  padding: 0.3em 0.9em;
   cursor: pointer;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.replay-button.ghost {
+  background: rgba(12, 20, 32, 0.95);
+  border-color: var(--line-strong);
+}
+
+.replay-button.primary {
+  background: linear-gradient(180deg, #2a89ff, #1f6fd1);
+  border-color: #4da0ff;
+}
+
+.replay-button:hover {
+  filter: brightness(1.08);
 }
 
 .replay-rate {
   border: 1px solid var(--line-strong);
-  background: rgba(10, 14, 18, 0.9);
+  background: rgba(10, 14, 18, 0.92);
   color: white;
   border-radius: 999px;
-  padding: 0.25em 0.5em;
+  padding: 0.28em 0.52em;
+}
+
+.rate-select-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  color: var(--text-muted);
+  font-size: 0.82em;
+  padding: 0.22em 0.35em 0.22em 0.5em;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(12, 20, 32, 0.8);
 }
 
 .timeline-wrap {
   position: relative;
+  background: rgba(4, 9, 16, 0.95);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.18em 0.45em;
 }
 
 .timeline-slider {
   width: 100%;
+  accent-color: var(--accent);
 }
 
 .timeline-markers {
@@ -590,9 +632,24 @@ onUnmounted(() => {
 }
 
 .replay-time {
-  min-width: 90px;
+  min-width: 110px;
   text-align: right;
-  color: #ddd;
+  color: #d7e7fb;
+  font-variant-numeric: tabular-nums;
+  background: rgba(12, 20, 32, 0.8);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.24em 0.55em;
+}
+
+.current-time {
+  color: #9ad0ff;
+  font-weight: 700;
+}
+
+.time-separator {
+  color: #7f99b9;
+  margin: 0 0.25em;
 }
 
 .settings-drawer {
