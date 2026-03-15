@@ -10,6 +10,7 @@ export interface Config {
   grSimAddress?: string
   grSimPort?: number
   autoBallPlacementEnabled?: boolean
+  autoCenterAfterGoalEnabled?: boolean
 }
 
 const API_BASE = '/api/config'
@@ -18,6 +19,7 @@ const config = ref<Config>({
   trackedPort: 10010,
   refereePort: 10003,
   autoBallPlacementEnabled: false,
+  autoCenterAfterGoalEnabled: false,
 })
 
 const loading = ref(false)
@@ -42,6 +44,7 @@ export function useSettings() {
       const data = await response.json()
       config.value = {
         autoBallPlacementEnabled: false,
+        autoCenterAfterGoalEnabled: false,
         ...data,
       }
     } catch (e) {
@@ -60,6 +63,7 @@ export function useSettings() {
     grSimAddress?: string
     grSimPort?: number
     autoBallPlacementEnabled?: boolean
+    autoCenterAfterGoalEnabled?: boolean
   }) => {
     loading.value = true
     error.value = null

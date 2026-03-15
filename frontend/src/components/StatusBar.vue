@@ -40,6 +40,7 @@ const refereePort = ref(10003)
 const grSimAddress = ref('127.0.0.1')
 const grSimPort = ref(20011)
 const autoBallPlacementEnabled = ref(false)
+const autoCenterAfterGoalEnabled = ref(false)
 const settingsDrawerRef = ref<HTMLDetailsElement | null>(null)
 
 const selectedObject = inject<Ref<{
@@ -173,6 +174,7 @@ function syncInputsFromConfig() {
   grSimAddress.value = config.value.grSimAddress || '127.0.0.1'
   grSimPort.value = config.value.grSimPort || 20011
   autoBallPlacementEnabled.value = config.value.autoBallPlacementEnabled || false
+  autoCenterAfterGoalEnabled.value = config.value.autoCenterAfterGoalEnabled || false
 }
 
 async function onSaveConfig() {
@@ -183,6 +185,7 @@ async function onSaveConfig() {
     grSimAddress: grSimAddress.value,
     grSimPort: grSimPort.value,
     autoBallPlacementEnabled: autoBallPlacementEnabled.value,
+    autoCenterAfterGoalEnabled: autoCenterAfterGoalEnabled.value,
   })
 }
 
@@ -334,6 +337,7 @@ onUnmounted(() => {
               <span class="settings-group-title">Automation</span>
               <div class="settings-toggle-list">
                 <label class="settings-toggle-item"><input type="checkbox" v-model="autoBallPlacementEnabled" /><span>Auto Ball Placement</span></label>
+                <label class="settings-toggle-item"><input type="checkbox" v-model="autoCenterAfterGoalEnabled" /><span>Auto Center After Goal</span></label>
               </div>
               <div class="config-buttons">
                 <button class="replay-button ghost" @click="syncInputsFromConfig" :disabled="settingsLoading">Reset</button>

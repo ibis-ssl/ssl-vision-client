@@ -64,12 +64,28 @@ const layerVisibility = ref<LayerVisibility>({
 })
 
 const lastAutoPlacementCommandCounter = ref<number | null>(null)
+const lastAutoPlacementGoalEventKey = ref<string | null>(null)
+
+function getLatestGoalEventKey(): string | null {
+  const events = referee.value?.gameEvents
+  if (!events || events.length === 0) return null
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    const event = events[i]
+    if (!event) continue
+    if (event.event.case === 'goal') {
+      return event.id || `${event.createdTimestamp}`
+    }
+  }
+  return null
+}
 
 watch(
   [
     () => referee.value?.commandCounter,
     () => referee.value?.command,
+    () => referee.value?.gameEvents,
     () => config.value.autoBallPlacementEnabled,
+    () => config.value.autoCenterAfterGoalEnabled,
     () => replayState.value.mode,
   ],
   async ([currentCommandCounter]) => {
@@ -77,12 +93,10 @@ watch(
     if (!currentReferee || currentCommandCounter === undefined) {
       return
     }
-    if (!config.value.autoBallPlacementEnabled || replayState.value.mode !== 'live') {
+    if (replayState.value.mode !== 'live') {
       return
     }
-    if (lastAutoPlacementCommandCounter.value === currentCommandCounter) {
-      return
-    }
+    const isSameCommandCounter = lastAutoPlacementCommandCounter.value === currentCommandCounter
 
     const isBallPlacementCommand =
       currentReferee.command === Referee_Command.BALL_PLACEMENT_YELLOW ||
@@ -90,16 +104,33 @@ watch(
     const isGoalCommand =
       currentReferee.command === Referee_Command.GOAL_YELLOW ||
       currentReferee.command === Referee_Command.GOAL_BLUE
+    const latestGoalEventKey = config.value.autoCenterAfterGoalEnabled ? getLatestGoalEventKey() : null
 
     try {
-      if (isBallPlacementCommand && currentReferee.designatedPosition) {
+      if (
+        config.value.autoBallPlacementEnabled &&
+        !isSameCommandCounter &&
+        isBallPlacementCommand &&
+        currentReferee.designatedPosition
+      ) {
         const x = currentReferee.designatedPosition.x / 1000
         const y = currentReferee.designatedPosition.y / 1000
         await replaceBall(x, y)
         lastAutoPlacementCommandCounter.value = currentCommandCounter
-      } else if (isGoalCommand) {
+      } else if (
+        config.value.autoCenterAfterGoalEnabled &&
+        !isSameCommandCounter &&
+        isGoalCommand
+      ) {
         await replaceBall(0, 0)
         lastAutoPlacementCommandCounter.value = currentCommandCounter
+      } else if (
+        config.value.autoCenterAfterGoalEnabled &&
+        latestGoalEventKey &&
+        lastAutoPlacementGoalEventKey.value !== latestGoalEventKey
+      ) {
+        await replaceBall(0, 0)
+        lastAutoPlacementGoalEventKey.value = latestGoalEventKey
       }
     } catch (error) {
       if (isGoalCommand) {

@@ -13,7 +13,8 @@ type ConfigUpdateRequest struct {
 	RefereePort              int    `json:"refereePort"`
 	GrSimAddress             string `json:"grSimAddress"`
 	GrSimPort                int    `json:"grSimPort"`
-	AutoBallPlacementEnabled bool   `json:"autoBallPlacementEnabled"`
+	AutoBallPlacementEnabled    bool   `json:"autoBallPlacementEnabled"`
+	AutoCenterAfterGoalEnabled bool   `json:"autoCenterAfterGoalEnabled"`
 }
 
 // ReceiverRestarter レシーバーを再起動するインターフェース
@@ -52,15 +53,16 @@ func handleGetConfig(w http.ResponseWriter, cfg *Config) {
 	visionPort, trackedPort, refereePort := cfg.GetPorts()
 
 	response := map[string]interface{}{
-		"visionPort":               visionPort,
-		"trackedPort":              trackedPort,
-		"refereePort":              refereePort,
-		"visionIP":                 VisionIP,
-		"trackedIP":                TrackedIP,
-		"refereeIP":                RefereeIP,
-		"grSimAddress":             cfg.GrSimAddress,
-		"grSimPort":                cfg.GrSimPort,
-		"autoBallPlacementEnabled": cfg.AutoBallPlacementEnabled,
+		"visionPort":                 visionPort,
+		"trackedPort":                trackedPort,
+		"refereePort":                refereePort,
+		"visionIP":                   VisionIP,
+		"trackedIP":                  TrackedIP,
+		"refereeIP":                  RefereeIP,
+		"grSimAddress":               cfg.GrSimAddress,
+		"grSimPort":                  cfg.GrSimPort,
+		"autoBallPlacementEnabled":   cfg.AutoBallPlacementEnabled,
+		"autoCenterAfterGoalEnabled": cfg.AutoCenterAfterGoalEnabled,
 	}
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
@@ -98,6 +100,7 @@ func handleUpdateConfig(w http.ResponseWriter, r *http.Request, cfg *Config, res
 		req.GrSimAddress,
 		req.GrSimPort,
 		req.AutoBallPlacementEnabled,
+		req.AutoCenterAfterGoalEnabled,
 	)
 
 	// ファイルに保存

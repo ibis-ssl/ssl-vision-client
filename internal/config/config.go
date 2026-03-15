@@ -22,7 +22,8 @@ type Config struct {
 	RefereePort              int    `json:"refereePort"`
 	GrSimAddress             string `json:"grSimAddress"`
 	GrSimPort                int    `json:"grSimPort"`
-	AutoBallPlacementEnabled bool   `json:"autoBallPlacementEnabled"`
+	AutoBallPlacementEnabled    bool   `json:"autoBallPlacementEnabled"`
+	AutoCenterAfterGoalEnabled bool   `json:"autoCenterAfterGoalEnabled"`
 	mu                       sync.RWMutex
 }
 
@@ -34,7 +35,8 @@ func DefaultConfig() *Config {
 		RefereePort:              10003,
 		GrSimAddress:             "127.0.0.1",
 		GrSimPort:                20011,
-		AutoBallPlacementEnabled: false,
+		AutoBallPlacementEnabled:    false,
+		AutoCenterAfterGoalEnabled: false,
 	}
 }
 
@@ -51,8 +53,17 @@ func LoadConfig() (*Config, error) {
 		return nil, err
 	}
 
+	// 後方互換: 旧設定ファイルに autoCenterAfterGoalEnabled がない場合は
+	// 既存の autoBallPlacementEnabled と同値で初期化する。
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil, err
+	}
 	if err := json.Unmarshal(data, cfg); err != nil {
 		return nil, err
+	}
+	if _, exists := raw["autoCenterAfterGoalEnabled"]; !exists {
+		cfg.AutoCenterAfterGoalEnabled = cfg.AutoBallPlacementEnabled
 	}
 
 	return cfg, nil
@@ -77,6 +88,7 @@ func (c *Config) Update(
 	grSimAddress string,
 	grSimPort int,
 	autoBallPlacementEnabled bool,
+	autoCenterAfterGoalEnabled bool,
 ) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -97,6 +109,7 @@ func (c *Config) Update(
 		c.GrSimPort = grSimPort
 	}
 	c.AutoBallPlacementEnabled = autoBallPlacementEnabled
+	c.AutoCenterAfterGoalEnabled = autoCenterAfterGoalEnabled
 }
 
 // GetAddresses 現在のアドレス設定を取得
