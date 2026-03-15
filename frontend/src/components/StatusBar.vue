@@ -13,6 +13,7 @@ interface Props {
   refereeConnected: boolean
   grsimConnected: boolean
   replayState: ReplayState
+  replayLoading: boolean
   layerVisibility: LayerVisibility
 }
 
@@ -31,7 +32,7 @@ interface Emits {
 }
 
 const emit = defineEmits<Emits>()
-const { config, loading, error, successMessage, fetchConfig, updateConfig } = useSettings()
+const { config, loading: settingsLoading, error, successMessage, fetchConfig, updateConfig } = useSettings()
 
 const visionPort = ref(10006)
 const trackedPort = ref(10010)
@@ -40,7 +41,6 @@ const grSimAddress = ref('127.0.0.1')
 const grSimPort = ref(20011)
 const autoBallPlacementEnabled = ref(false)
 const settingsDrawerRef = ref<HTMLDetailsElement | null>(null)
-const fileDropActive = ref(false)
 
 const selectedObject = inject<Ref<{
   type: 'robot' | 'ball'
@@ -100,10 +100,8 @@ const commandText = computed(() => {
 
 const timeText = computed(() => {
   if (!props.referee || props.referee.stageTimeLeft === undefined) return '--:--'
-  const seconds = Math.floor(Number(props.referee.stageTimeLeft) / 1000000)
-  const minutes = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  return `${minutes}:${secs.toString().padStart(2, '0')}`
+  // stageTimeLeft はマイクロ秒、formatTimeNs はナノ秒を受け取る
+  return formatTimeNs(Number(props.referee.stageTimeLeft) * 1000)
 })
 
 const blueScore = computed(() => props.referee?.blue?.score ?? 0)
@@ -210,33 +208,6 @@ function onDocumentKeyDown(event: KeyboardEvent) {
   }
 }
 
-function onReplayFileDragEnter(event: DragEvent) {
-  event.preventDefault()
-  fileDropActive.value = true
-}
-
-function onReplayFileDragOver(event: DragEvent) {
-  event.preventDefault()
-  fileDropActive.value = true
-}
-
-function onReplayFileDragLeave(event: DragEvent) {
-  event.preventDefault()
-  const current = event.currentTarget as HTMLElement | null
-  const related = event.relatedTarget as Node | null
-  if (current && related && current.contains(related)) return
-  fileDropActive.value = false
-}
-
-function onReplayFileDrop(event: DragEvent) {
-  event.preventDefault()
-  fileDropActive.value = false
-  const file = event.dataTransfer?.files?.[0]
-  if (file) {
-    emit('replay-file-selected', file)
-  }
-}
-
 onMounted(async () => {
   document.addEventListener('mousedown', onDocumentPointerDown)
   document.addEventListener('keydown', onDocumentKeyDown)
@@ -307,34 +278,27 @@ onUnmounted(() => {
             <span class="group-title">Data Mode</span>
             <label class="toggle-item"><input type="radio" name="data-mode" value="live" :checked="props.replayState.mode === 'live'" @change="emit('update:mode', 'live')" /><span>Live</span></label>
             <label class="toggle-item"><input type="radio" name="data-mode" value="replay" :checked="props.replayState.mode === 'replay'" @change="emit('update:mode', 'replay')" /><span>Replay</span></label>
-            <div
-              class="file-dropzone"
-              :class="{ active: fileDropActive }"
-              @dragenter="onReplayFileDragEnter"
-              @dragover="onReplayFileDragOver"
-              @dragleave="onReplayFileDragLeave"
-              @drop="onReplayFileDrop"
-            >
-              <input class="input-control" type="file" accept=".log,.gz,.log.gz" :disabled="loading" @change="onReplayFileSelected" />
-              <div class="drop-hint">Drop .log / .log.gz here</div>
+            <div class="file-dropzone">
+              <input class="input-control" type="file" accept=".log,.gz,.log.gz" :disabled="settingsLoading || props.replayLoading" @change="onReplayFileSelected" />
+              <div class="drop-hint">Select .log / .log.gz file</div>
             </div>
           </div>
 
           <div class="settings-group">
             <span class="group-title">Ports</span>
-            <label>Vision <input class="input-control" type="number" v-model.number="visionPort" min="1" max="65535" :disabled="loading" /></label>
-            <label>Tracked <input class="input-control" type="number" v-model.number="trackedPort" min="1" max="65535" :disabled="loading" /></label>
-            <label>Referee <input class="input-control" type="number" v-model.number="refereePort" min="1" max="65535" :disabled="loading" /></label>
+            <label>Vision <input class="input-control" type="number" v-model.number="visionPort" min="1" max="65535" :disabled="settingsLoading" /></label>
+            <label>Tracked <input class="input-control" type="number" v-model.number="trackedPort" min="1" max="65535" :disabled="settingsLoading" /></label>
+            <label>Referee <input class="input-control" type="number" v-model.number="refereePort" min="1" max="65535" :disabled="settingsLoading" /></label>
           </div>
 
           <div class="settings-group">
             <span class="group-title">grSim & Automation</span>
-            <label>Address <input class="input-control" type="text" v-model="grSimAddress" :disabled="loading" /></label>
-            <label>Port <input class="input-control" type="number" v-model.number="grSimPort" min="1" max="65535" :disabled="loading" /></label>
+            <label>Address <input class="input-control" type="text" v-model="grSimAddress" :disabled="settingsLoading" /></label>
+            <label>Port <input class="input-control" type="number" v-model.number="grSimPort" min="1" max="65535" :disabled="settingsLoading" /></label>
             <label class="toggle-item"><input type="checkbox" v-model="autoBallPlacementEnabled" /><span>Auto Ball Placement</span></label>
             <div class="config-buttons">
-              <button class="replay-button" @click="syncInputsFromConfig" :disabled="loading">Reset</button>
-              <button class="replay-button" @click="onSaveConfig" :disabled="loading">{{ loading ? 'Saving...' : 'Save' }}</button>
+              <button class="replay-button" @click="syncInputsFromConfig" :disabled="settingsLoading">Reset</button>
+              <button class="replay-button" @click="onSaveConfig" :disabled="settingsLoading">{{ settingsLoading ? 'Saving...' : 'Save' }}</button>
             </div>
             <div v-if="error" class="error-text">{{ error }}</div>
             <div v-else-if="successMessage" class="success-text">{{ successMessage }}</div>
@@ -343,14 +307,18 @@ onUnmounted(() => {
       </details>
     </div>
 
-    <div v-if="replayMode" class="replay-row">
+    <div v-if="replayMode || props.replayLoading" class="replay-row" :class="{ loading: props.replayLoading }">
+      <div v-if="props.replayLoading" class="replay-loading-overlay" role="status" aria-live="polite">
+        <span class="spinner large" aria-hidden="true" />
+        <span class="overlay-text">ログファイルを読み込み中...</span>
+      </div>
       <div class="replay-controls" role="group" aria-label="Replay controls">
-        <button class="replay-button ghost" title="Previous frame" @click="emit('replay-step', -1)">◀◀</button>
-        <button class="replay-button primary" title="Play or pause" @click="togglePlayPause">{{ props.replayState.playing ? 'Pause' : 'Play' }}</button>
-        <button class="replay-button ghost" title="Next frame" @click="emit('replay-step', 1)">▶▶</button>
+        <button class="replay-button ghost" title="Previous frame" :disabled="props.replayLoading" @click="emit('replay-step', -1)">◀◀</button>
+        <button class="replay-button primary" title="Play or pause" :disabled="props.replayLoading" @click="togglePlayPause">{{ props.replayState.playing ? 'Pause' : 'Play' }}</button>
+        <button class="replay-button ghost" title="Next frame" :disabled="props.replayLoading" @click="emit('replay-step', 1)">▶▶</button>
         <label class="rate-select-wrap">
           <span>Rate</span>
-          <select class="replay-rate" :value="props.replayState.rate" @change="onRateChange">
+          <select class="replay-rate" :value="props.replayState.rate" :disabled="props.replayLoading" @change="onRateChange">
             <option :value="0.25">0.25x</option>
             <option :value="0.5">0.5x</option>
             <option :value="1">1x</option>
@@ -376,6 +344,7 @@ onUnmounted(() => {
           min="0"
           :max="replayDuration"
           :value="replayPosition"
+          :disabled="props.replayLoading"
           @input="onSeek"
         />
       </div>
@@ -541,6 +510,7 @@ onUnmounted(() => {
 }
 
 .replay-row {
+  position: relative;
   display: grid;
   grid-template-columns: auto 1fr auto;
   gap: 0.9em;
@@ -549,6 +519,34 @@ onUnmounted(() => {
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 0.55em 0.65em;
+}
+
+.replay-row.loading .replay-controls,
+.replay-row.loading .timeline-wrap,
+.replay-row.loading .replay-time {
+  opacity: 0.35;
+}
+
+.replay-loading-overlay {
+  position: absolute;
+  inset: 0.25em;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7em;
+  border-radius: 8px;
+  background: rgba(5, 13, 24, 0.72);
+  border: 1px solid #4da0ff;
+  backdrop-filter: blur(2px);
+}
+
+.overlay-text {
+  font-size: 0.98em;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #d9ecff;
+  text-shadow: 0 0 8px rgba(77, 160, 255, 0.45);
 }
 
 .replay-controls {
@@ -566,6 +564,11 @@ onUnmounted(() => {
   cursor: pointer;
   font-weight: 700;
   letter-spacing: 0.01em;
+}
+
+.replay-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .replay-button.ghost {
@@ -742,14 +745,30 @@ onUnmounted(() => {
   gap: 0.35em;
 }
 
-.file-dropzone.active {
-  border-color: var(--accent);
-  background: rgba(121, 192, 255, 0.08);
-}
-
 .drop-hint {
   font-size: 0.78em;
   color: var(--text-muted);
+}
+
+.spinner {
+  width: 0.9em;
+  height: 0.9em;
+  border: 2px solid rgba(184, 218, 255, 0.35);
+  border-top-color: #b8daff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.spinner.large {
+  width: 1.2em;
+  height: 1.2em;
+  border-width: 3px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .config-buttons {

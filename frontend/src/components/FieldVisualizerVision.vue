@@ -263,6 +263,7 @@ onUnmounted(() => {
       :referee-connected="refereeConnected"
       :grsim-connected="grsimConnected"
       :replay-state="replayState"
+      :replay-loading="replay.loading.value"
       :layer-visibility="layerVisibility"
       @update:active-source="activeSource = $event"
       @update:mode="onModeUpdate"
