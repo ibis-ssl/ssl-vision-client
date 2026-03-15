@@ -23,11 +23,14 @@ const config = ref<Config>({
 const loading = ref(false)
 const error = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
+let fetchedOnce = false
 
 export function useSettings() {
 
-  // 設定を取得
-  const fetchConfig = async () => {
+  // 設定を取得（force=false の場合、複数コンポーネントから呼ばれても1回のみAPIリクエストを行う）
+  const fetchConfig = async (force = false) => {
+    if (!force && fetchedOnce) return
+    fetchedOnce = true
     loading.value = true
     error.value = null
 
@@ -77,7 +80,7 @@ export function useSettings() {
       }
 
       // 設定を再取得
-      await fetchConfig()
+      await fetchConfig(true)
       successMessage.value = '設定を保存し、適用しました'
 
       // 成功メッセージを3秒後に消す

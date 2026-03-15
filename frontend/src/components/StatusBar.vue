@@ -3,10 +3,10 @@ import type { Referee } from '@/proto/gc/ssl_gc_referee_message_pb.ts'
 import type { ReplayState } from '@/composables/replay.ts'
 import type { LayerVisibility } from '@/components/LayerControl.vue'
 import { useSettings } from '@/composables/settings'
-import { computed, inject, onMounted, ref, type Ref } from 'vue'
+import { computed, inject, onMounted, onUnmounted, ref, type Ref } from 'vue'
 
 interface Props {
-  referee: Referee
+  referee: Referee | null | undefined
   activeSource: string
   sources: Record<string, string>
   visionConnected: boolean
@@ -39,6 +39,8 @@ const refereePort = ref(10003)
 const grSimAddress = ref('127.0.0.1')
 const grSimPort = ref(20011)
 const autoBallPlacementEnabled = ref(false)
+const settingsDrawerRef = ref<HTMLDetailsElement | null>(null)
+const fileDropActive = ref(false)
 
 const selectedObject = inject<Ref<{
   type: 'robot' | 'ball'
@@ -51,6 +53,7 @@ const selectedObject = inject<Ref<{
 } | null>)
 
 const stageText = computed(() => {
+  if (!props.referee) return '--'
   const stageMap: { [key: number]: string } = {
     0: 'NORMAL_FIRST_HALF_PRE',
     1: 'NORMAL_FIRST_HALF',
@@ -71,6 +74,7 @@ const stageText = computed(() => {
 })
 
 const commandText = computed(() => {
+  if (!props.referee) return '--'
   const commandMap: { [key: number]: string } = {
     0: 'HALT',
     1: 'STOP',
@@ -95,17 +99,17 @@ const commandText = computed(() => {
 })
 
 const timeText = computed(() => {
-  if (props.referee.stageTimeLeft === undefined) return '--:--'
+  if (!props.referee || props.referee.stageTimeLeft === undefined) return '--:--'
   const seconds = Math.floor(Number(props.referee.stageTimeLeft) / 1000000)
   const minutes = Math.floor(seconds / 60)
   const secs = seconds % 60
   return `${minutes}:${secs.toString().padStart(2, '0')}`
 })
 
-const blueScore = computed(() => props.referee.blue?.score ?? 0)
-const yellowScore = computed(() => props.referee.yellow?.score ?? 0)
-const blueName = computed(() => props.referee.blue?.name || '')
-const yellowName = computed(() => props.referee.yellow?.name || '')
+const blueScore = computed(() => props.referee?.blue?.score ?? 0)
+const yellowScore = computed(() => props.referee?.yellow?.score ?? 0)
+const blueName = computed(() => props.referee?.blue?.name || '')
+const yellowName = computed(() => props.referee?.yellow?.name || '')
 
 const selectedText = computed(() => {
   if (!selectedObject.value) return '選択なし'
@@ -188,9 +192,61 @@ function onReplayFileSelected(event: Event) {
   }
 }
 
+function closeSettingsDrawer() {
+  settingsDrawerRef.value?.removeAttribute('open')
+}
+
+function onDocumentPointerDown(event: MouseEvent) {
+  const drawer = settingsDrawerRef.value
+  if (!drawer?.open) return
+  const target = event.target as Node | null
+  if (target && drawer.contains(target)) return
+  closeSettingsDrawer()
+}
+
+function onDocumentKeyDown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    closeSettingsDrawer()
+  }
+}
+
+function onReplayFileDragEnter(event: DragEvent) {
+  event.preventDefault()
+  fileDropActive.value = true
+}
+
+function onReplayFileDragOver(event: DragEvent) {
+  event.preventDefault()
+  fileDropActive.value = true
+}
+
+function onReplayFileDragLeave(event: DragEvent) {
+  event.preventDefault()
+  const current = event.currentTarget as HTMLElement | null
+  const related = event.relatedTarget as Node | null
+  if (current && related && current.contains(related)) return
+  fileDropActive.value = false
+}
+
+function onReplayFileDrop(event: DragEvent) {
+  event.preventDefault()
+  fileDropActive.value = false
+  const file = event.dataTransfer?.files?.[0]
+  if (file) {
+    emit('replay-file-selected', file)
+  }
+}
+
 onMounted(async () => {
+  document.addEventListener('mousedown', onDocumentPointerDown)
+  document.addEventListener('keydown', onDocumentKeyDown)
   await fetchConfig()
   syncInputsFromConfig()
+})
+
+onUnmounted(() => {
+  document.removeEventListener('mousedown', onDocumentPointerDown)
+  document.removeEventListener('keydown', onDocumentKeyDown)
 })
 </script>
 
@@ -234,7 +290,7 @@ onMounted(async () => {
         <span class="value selection-text" :class="{ selected: selectedObject }">{{ selectedText }}</span>
       </div>
 
-      <details class="settings-drawer">
+      <details ref="settingsDrawerRef" class="settings-drawer">
         <summary>
           <span class="settings-summary-title">Settings</span>
         </summary>
@@ -251,7 +307,17 @@ onMounted(async () => {
             <span class="group-title">Data Mode</span>
             <label class="toggle-item"><input type="radio" name="data-mode" value="live" :checked="props.replayState.mode === 'live'" @change="emit('update:mode', 'live')" /><span>Live</span></label>
             <label class="toggle-item"><input type="radio" name="data-mode" value="replay" :checked="props.replayState.mode === 'replay'" @change="emit('update:mode', 'replay')" /><span>Replay</span></label>
-            <input class="input-control" type="file" accept=".log,.gz,.log.gz" :disabled="loading" @change="onReplayFileSelected" />
+            <div
+              class="file-dropzone"
+              :class="{ active: fileDropActive }"
+              @dragenter="onReplayFileDragEnter"
+              @dragover="onReplayFileDragOver"
+              @dragleave="onReplayFileDragLeave"
+              @drop="onReplayFileDrop"
+            >
+              <input class="input-control" type="file" accept=".log,.gz,.log.gz" :disabled="loading" @change="onReplayFileSelected" />
+              <div class="drop-hint">Drop .log / .log.gz here</div>
+            </div>
           </div>
 
           <div class="settings-group">
@@ -609,6 +675,24 @@ onMounted(async () => {
   border: 1px solid var(--line-strong);
   border-radius: 6px;
   padding: 0.28em 0.45em;
+}
+
+.file-dropzone {
+  border: 1px dashed var(--line-strong);
+  border-radius: 8px;
+  padding: 0.45em;
+  display: grid;
+  gap: 0.35em;
+}
+
+.file-dropzone.active {
+  border-color: var(--accent);
+  background: rgba(121, 192, 255, 0.08);
+}
+
+.drop-hint {
+  font-size: 0.78em;
+  color: var(--text-muted);
 }
 
 .config-buttons {
