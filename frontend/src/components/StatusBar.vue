@@ -33,6 +33,7 @@ interface Emits {
 
 const emit = defineEmits<Emits>()
 const { config, loading: settingsLoading, error, successMessage, fetchConfig, updateConfig } = useSettings()
+type SettingsTab = 'layer' | 'replay' | 'network' | 'automation'
 
 const visionPort = ref(10006)
 const trackedPort = ref(10010)
@@ -41,6 +42,13 @@ const grSimAddress = ref('127.0.0.1')
 const grSimPort = ref(20011)
 const autoBallPlacementEnabled = ref(false)
 const settingsDrawerRef = ref<HTMLDetailsElement | null>(null)
+const activeSettingsTab = ref<SettingsTab>('layer')
+const settingsTabs: Array<{ id: SettingsTab; label: string }> = [
+  { id: 'layer', label: 'Layer' },
+  { id: 'replay', label: 'Replay' },
+  { id: 'network', label: 'Network' },
+  { id: 'automation', label: 'Automation' },
+]
 
 const selectedObject = inject<Ref<{
   type: 'robot' | 'ball'
@@ -265,43 +273,92 @@ onUnmounted(() => {
         <summary>
           <span class="settings-summary-title">Settings</span>
         </summary>
-        <div class="settings-grid">
-          <div class="settings-group">
-            <span class="group-title">Layer</span>
-            <label class="toggle-item"><input type="checkbox" :checked="props.layerVisibility.ball" @change="emit('toggle-layer', 'ball')" /><span>Ball</span></label>
-            <label class="toggle-item"><input type="checkbox" :checked="props.layerVisibility.referee" @change="emit('toggle-layer', 'referee')" /><span>Referee</span></label>
-            <label class="toggle-item"><input type="checkbox" :checked="props.layerVisibility.fieldLines" @change="emit('toggle-layer', 'fieldLines')" /><span>Field</span></label>
-            <label class="toggle-item"><input type="checkbox" :checked="props.layerVisibility.fouls" @change="emit('toggle-layer', 'fouls')" /><span>Fouls</span></label>
+        <div class="settings-panel">
+          <header class="settings-panel-header">
+            <h3 class="settings-panel-title">Runtime Controls</h3>
+            <p class="settings-panel-subtitle">Tune visualization, replay, and network endpoints.</p>
+          </header>
+
+          <div class="settings-tabs" role="tablist" aria-label="Settings tabs">
+            <button
+              v-for="tab in settingsTabs"
+              :key="tab.id"
+              class="settings-tab"
+              :class="{ active: activeSettingsTab === tab.id }"
+              role="tab"
+              :aria-selected="activeSettingsTab === tab.id"
+              :tabindex="activeSettingsTab === tab.id ? 0 : -1"
+              type="button"
+              @click="activeSettingsTab = tab.id"
+            >
+              {{ tab.label }}
+            </button>
           </div>
 
-          <div class="settings-group">
-            <span class="group-title">Data Mode</span>
-            <label class="toggle-item"><input type="radio" name="data-mode" value="live" :checked="props.replayState.mode === 'live'" @change="emit('update:mode', 'live')" /><span>Live</span></label>
-            <label class="toggle-item"><input type="radio" name="data-mode" value="replay" :checked="props.replayState.mode === 'replay'" @change="emit('update:mode', 'replay')" /><span>Replay</span></label>
-            <div class="file-dropzone">
-              <input class="input-control" type="file" accept=".log,.gz,.log.gz" :disabled="settingsLoading || props.replayLoading" @change="onReplayFileSelected" />
-              <div class="drop-hint">Select .log / .log.gz file</div>
+          <div class="settings-content" role="tabpanel">
+            <div v-if="activeSettingsTab === 'layer'" class="settings-group">
+              <span class="settings-group-title">Layer Visibility</span>
+              <div class="settings-toggle-list">
+                <label class="settings-toggle-item"><input type="checkbox" :checked="props.layerVisibility.ball" @change="emit('toggle-layer', 'ball')" /><span>Ball</span></label>
+                <label class="settings-toggle-item"><input type="checkbox" :checked="props.layerVisibility.referee" @change="emit('toggle-layer', 'referee')" /><span>Referee</span></label>
+                <label class="settings-toggle-item"><input type="checkbox" :checked="props.layerVisibility.fieldLines" @change="emit('toggle-layer', 'fieldLines')" /><span>Field</span></label>
+                <label class="settings-toggle-item"><input type="checkbox" :checked="props.layerVisibility.fouls" @change="emit('toggle-layer', 'fouls')" /><span>Fouls</span></label>
+              </div>
             </div>
-          </div>
 
-          <div class="settings-group">
-            <span class="group-title">Ports</span>
-            <label>Vision <input class="input-control" type="number" v-model.number="visionPort" min="1" max="65535" :disabled="settingsLoading" /></label>
-            <label>Tracked <input class="input-control" type="number" v-model.number="trackedPort" min="1" max="65535" :disabled="settingsLoading" /></label>
-            <label>Referee <input class="input-control" type="number" v-model.number="refereePort" min="1" max="65535" :disabled="settingsLoading" /></label>
-          </div>
-
-          <div class="settings-group">
-            <span class="group-title">grSim & Automation</span>
-            <label>Address <input class="input-control" type="text" v-model="grSimAddress" :disabled="settingsLoading" /></label>
-            <label>Port <input class="input-control" type="number" v-model.number="grSimPort" min="1" max="65535" :disabled="settingsLoading" /></label>
-            <label class="toggle-item"><input type="checkbox" v-model="autoBallPlacementEnabled" /><span>Auto Ball Placement</span></label>
-            <div class="config-buttons">
-              <button class="replay-button" @click="syncInputsFromConfig" :disabled="settingsLoading">Reset</button>
-              <button class="replay-button" @click="onSaveConfig" :disabled="settingsLoading">{{ settingsLoading ? 'Saving...' : 'Save' }}</button>
+            <div v-else-if="activeSettingsTab === 'replay'" class="settings-group">
+              <span class="settings-group-title">Replay Source</span>
+              <div class="settings-toggle-list">
+                <label class="settings-toggle-item"><input type="radio" name="data-mode" value="live" :checked="props.replayState.mode === 'live'" @change="emit('update:mode', 'live')" /><span>Live</span></label>
+                <label class="settings-toggle-item"><input type="radio" name="data-mode" value="replay" :checked="props.replayState.mode === 'replay'" @change="emit('update:mode', 'replay')" /><span>Replay</span></label>
+              </div>
+              <div class="file-picker">
+                <label class="setting-field-label">
+                  <span>Replay Log</span>
+                  <input class="input-control" type="file" accept=".log,.gz,.log.gz" :disabled="settingsLoading || props.replayLoading" @change="onReplayFileSelected" />
+                </label>
+                <div class="drop-hint">Select .log / .log.gz file</div>
+              </div>
             </div>
-            <div v-if="error" class="error-text">{{ error }}</div>
-            <div v-else-if="successMessage" class="success-text">{{ successMessage }}</div>
+
+            <div v-else-if="activeSettingsTab === 'network'" class="settings-group">
+              <span class="settings-group-title">Network Endpoints</span>
+              <div class="setting-field-grid">
+                <label class="setting-field-label">
+                  <span>Vision Port</span>
+                  <input class="input-control" type="number" v-model.number="visionPort" min="1" max="65535" :disabled="settingsLoading" />
+                </label>
+                <label class="setting-field-label">
+                  <span>Tracked Port</span>
+                  <input class="input-control" type="number" v-model.number="trackedPort" min="1" max="65535" :disabled="settingsLoading" />
+                </label>
+                <label class="setting-field-label">
+                  <span>Referee Port</span>
+                  <input class="input-control" type="number" v-model.number="refereePort" min="1" max="65535" :disabled="settingsLoading" />
+                </label>
+                <label class="setting-field-label">
+                  <span>grSim Address</span>
+                  <input class="input-control" type="text" v-model="grSimAddress" :disabled="settingsLoading" />
+                </label>
+                <label class="setting-field-label">
+                  <span>grSim Port</span>
+                  <input class="input-control" type="number" v-model.number="grSimPort" min="1" max="65535" :disabled="settingsLoading" />
+                </label>
+              </div>
+            </div>
+
+            <div v-else class="settings-group">
+              <span class="settings-group-title">Automation</span>
+              <div class="settings-toggle-list">
+                <label class="settings-toggle-item"><input type="checkbox" v-model="autoBallPlacementEnabled" /><span>Auto Ball Placement</span></label>
+              </div>
+              <div class="config-buttons">
+                <button class="replay-button ghost" @click="syncInputsFromConfig" :disabled="settingsLoading">Reset</button>
+                <button class="replay-button primary" @click="onSaveConfig" :disabled="settingsLoading">{{ settingsLoading ? 'Saving...' : 'Save' }}</button>
+              </div>
+              <div v-if="error" class="error-text">{{ error }}</div>
+              <div v-else-if="successMessage" class="success-text">{{ successMessage }}</div>
+            </div>
           </div>
         </div>
       </details>
@@ -681,52 +738,122 @@ onUnmounted(() => {
   font-weight: 700;
 }
 
-.settings-grid {
-  margin-top: 0;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(260px, 1fr));
-  gap: 0.8em;
+.settings-panel {
+  margin-top: 0.45em;
   position: absolute;
   right: 0;
   bottom: calc(100% + 0.55em);
   z-index: 220;
-  width: min(820px, calc(100vw - 2em));
-  background: rgba(8, 14, 22, 0.97);
-  border: 1px solid var(--line);
+  width: min(760px, calc(100vw - 2em));
+  background: linear-gradient(160deg, rgba(7, 14, 24, 0.98), rgba(9, 18, 31, 0.98));
+  border: 1px solid #3e5b83;
+  border-radius: 12px;
+  padding: 0.8em 0.85em 0.9em;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.52), inset 0 0 0 1px rgba(121, 192, 255, 0.08);
+}
+
+.settings-panel-header {
+  margin-bottom: 0.65em;
+}
+
+.settings-panel-title {
+  margin: 0;
+  font-size: 0.96em;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #d6ebff;
+}
+
+.settings-panel-subtitle {
+  margin: 0.2em 0 0;
+  color: #8cb0d6;
+  font-size: 0.78em;
+}
+
+.settings-tabs {
+  display: flex;
+  gap: 0.35em;
+  margin-bottom: 0.65em;
+  overflow-x: auto;
+  padding-bottom: 0.1em;
+}
+
+.settings-tab {
+  border: 1px solid #334861;
+  background: rgba(10, 18, 30, 0.85);
+  color: #95b2d3;
+  border-radius: 999px;
+  padding: 0.28em 0.75em;
+  font-size: 0.78em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.settings-tab.active {
+  color: #e8f4ff;
+  border-color: #62b2ff;
+  background: linear-gradient(180deg, rgba(55, 130, 216, 0.95), rgba(30, 90, 160, 0.95));
+  box-shadow: 0 0 0 1px rgba(98, 178, 255, 0.35);
+}
+
+.settings-content {
+  border: 1px solid #2d4058;
   border-radius: 10px;
-  padding: 0.8em;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  background: rgba(8, 15, 25, 0.78);
+  padding: 0.7em;
 }
 
 .settings-group {
   display: flex;
   flex-direction: column;
-  gap: 0.45em;
-  background: rgba(9, 14, 22, 0.9);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 0.65em 0.7em;
+  gap: 0.6em;
 }
 
-.group-title {
-  color: var(--accent);
+.settings-group-title {
+  color: #89c9ff;
   font-size: 0.82em;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  margin-bottom: 0.1em;
+  margin: 0;
 }
 
-.settings-group label {
-  display: flex;
+.settings-toggle-list {
+  display: grid;
+  gap: 0.45em;
+}
+
+.settings-toggle-item {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5em;
+  gap: 0.45em;
   font-size: 0.9em;
+  color: #d4e7ff;
 }
 
-.toggle-item {
-  justify-content: flex-start !important;
-  gap: 0.4em !important;
+.setting-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6em;
+}
+
+.setting-field-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.28em;
+  font-size: 0.9em;
+  color: #d4e7ff;
+}
+
+.file-picker {
+  border: 1px solid #3b5677;
+  border-radius: 8px;
+  background: rgba(12, 20, 32, 0.78);
+  padding: 0.55em 0.6em;
+  display: grid;
+  gap: 0.4em;
 }
 
 .input-control {
@@ -735,14 +862,8 @@ onUnmounted(() => {
   border: 1px solid var(--line-strong);
   border-radius: 6px;
   padding: 0.28em 0.45em;
-}
-
-.file-dropzone {
-  border: 1px dashed var(--line-strong);
-  border-radius: 8px;
-  padding: 0.45em;
-  display: grid;
-  gap: 0.35em;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .drop-hint {
@@ -795,11 +916,13 @@ onUnmounted(() => {
   .replay-time {
     text-align: left;
   }
-  .settings-grid {
-    grid-template-columns: 1fr;
+  .settings-panel {
     right: auto;
     left: 0;
     width: min(560px, calc(100vw - 2em));
+  }
+  .setting-field-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>
