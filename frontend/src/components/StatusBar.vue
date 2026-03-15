@@ -33,7 +33,6 @@ interface Emits {
 
 const emit = defineEmits<Emits>()
 const { config, loading: settingsLoading, error, successMessage, fetchConfig, updateConfig } = useSettings()
-type SettingsTab = 'layer' | 'replay' | 'network' | 'automation'
 
 const visionPort = ref(10006)
 const trackedPort = ref(10010)
@@ -42,13 +41,6 @@ const grSimAddress = ref('127.0.0.1')
 const grSimPort = ref(20011)
 const autoBallPlacementEnabled = ref(false)
 const settingsDrawerRef = ref<HTMLDetailsElement | null>(null)
-const activeSettingsTab = ref<SettingsTab>('layer')
-const settingsTabs: Array<{ id: SettingsTab; label: string }> = [
-  { id: 'layer', label: 'Layer' },
-  { id: 'replay', label: 'Replay' },
-  { id: 'network', label: 'Network' },
-  { id: 'automation', label: 'Automation' },
-]
 
 const selectedObject = inject<Ref<{
   type: 'robot' | 'ball'
@@ -129,6 +121,10 @@ const selectedText = computed(() => {
 
 const sourceOptions = computed(() => Object.entries(props.sources))
 const replayMode = computed(() => props.replayState.mode === 'replay')
+const replayModeToggle = computed({
+  get: () => props.replayState.mode === 'replay',
+  set: (enabled: boolean) => emit('update:mode', enabled ? 'replay' : 'live'),
+})
 const replayDuration = computed(() => Math.max(props.replayState.durationNs, 0))
 const replayPosition = computed(() => Math.min(props.replayState.positionNs, replayDuration.value))
 
@@ -278,25 +274,8 @@ onUnmounted(() => {
             <h3 class="settings-panel-title">Runtime Controls</h3>
             <p class="settings-panel-subtitle">Tune visualization, replay, and network endpoints.</p>
           </header>
-
-          <div class="settings-tabs" role="tablist" aria-label="Settings tabs">
-            <button
-              v-for="tab in settingsTabs"
-              :key="tab.id"
-              class="settings-tab"
-              :class="{ active: activeSettingsTab === tab.id }"
-              role="tab"
-              :aria-selected="activeSettingsTab === tab.id"
-              :tabindex="activeSettingsTab === tab.id ? 0 : -1"
-              type="button"
-              @click="activeSettingsTab = tab.id"
-            >
-              {{ tab.label }}
-            </button>
-          </div>
-
-          <div class="settings-content" role="tabpanel">
-            <div v-if="activeSettingsTab === 'layer'" class="settings-group">
+          <div class="settings-content settings-overview">
+            <div class="settings-group settings-card">
               <span class="settings-group-title">Layer Visibility</span>
               <div class="settings-toggle-list">
                 <label class="settings-toggle-item"><input type="checkbox" :checked="props.layerVisibility.ball" @change="emit('toggle-layer', 'ball')" /><span>Ball</span></label>
@@ -306,11 +285,15 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <div v-else-if="activeSettingsTab === 'replay'" class="settings-group">
+            <div class="settings-group settings-card">
               <span class="settings-group-title">Replay Source</span>
-              <div class="settings-toggle-list">
-                <label class="settings-toggle-item"><input type="radio" name="data-mode" value="live" :checked="props.replayState.mode === 'live'" @change="emit('update:mode', 'live')" /><span>Live</span></label>
-                <label class="settings-toggle-item"><input type="radio" name="data-mode" value="replay" :checked="props.replayState.mode === 'replay'" @change="emit('update:mode', 'replay')" /><span>Replay</span></label>
+              <div class="mode-switch-row">
+                <span class="mode-switch-label" :class="{ active: !replayModeToggle }">Live</span>
+                <label class="mode-switch" aria-label="Toggle replay mode">
+                  <input v-model="replayModeToggle" type="checkbox" :disabled="settingsLoading || props.replayLoading" />
+                  <span class="mode-switch-slider" />
+                </label>
+                <span class="mode-switch-label" :class="{ active: replayModeToggle }">Replay</span>
               </div>
               <div class="file-picker">
                 <label class="setting-field-label">
@@ -321,7 +304,7 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <div v-else-if="activeSettingsTab === 'network'" class="settings-group">
+            <div class="settings-group settings-card settings-card-wide">
               <span class="settings-group-title">Network Endpoints</span>
               <div class="setting-field-grid">
                 <label class="setting-field-label">
@@ -347,7 +330,7 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <div v-else class="settings-group">
+            <div class="settings-group settings-card">
               <span class="settings-group-title">Automation</span>
               <div class="settings-toggle-list">
                 <label class="settings-toggle-item"><input type="checkbox" v-model="autoBallPlacementEnabled" /><span>Auto Ball Placement</span></label>
@@ -770,34 +753,6 @@ onUnmounted(() => {
   font-size: 0.78em;
 }
 
-.settings-tabs {
-  display: flex;
-  gap: 0.35em;
-  margin-bottom: 0.65em;
-  overflow-x: auto;
-  padding-bottom: 0.1em;
-}
-
-.settings-tab {
-  border: 1px solid #334861;
-  background: rgba(10, 18, 30, 0.85);
-  color: #95b2d3;
-  border-radius: 999px;
-  padding: 0.28em 0.75em;
-  font-size: 0.78em;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.settings-tab.active {
-  color: #e8f4ff;
-  border-color: #62b2ff;
-  background: linear-gradient(180deg, rgba(55, 130, 216, 0.95), rgba(30, 90, 160, 0.95));
-  box-shadow: 0 0 0 1px rgba(98, 178, 255, 0.35);
-}
-
 .settings-content {
   border: 1px solid #2d4058;
   border-radius: 10px;
@@ -805,10 +760,27 @@ onUnmounted(() => {
   padding: 0.7em;
 }
 
+.settings-overview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65em;
+}
+
 .settings-group {
   display: flex;
   flex-direction: column;
   gap: 0.6em;
+}
+
+.settings-card {
+  border: 1px solid #344b68;
+  border-radius: 8px;
+  background: rgba(12, 20, 32, 0.6);
+  padding: 0.6em;
+}
+
+.settings-card-wide {
+  grid-column: 1 / -1;
 }
 
 .settings-group-title {
@@ -830,6 +802,70 @@ onUnmounted(() => {
   gap: 0.45em;
   font-size: 0.9em;
   color: #d4e7ff;
+}
+
+.mode-switch-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55em;
+}
+
+.mode-switch-label {
+  font-size: 0.86em;
+  color: #95b2d3;
+  font-weight: 600;
+}
+
+.mode-switch-label.active {
+  color: #e6f3ff;
+}
+
+.mode-switch {
+  position: relative;
+  width: 46px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.mode-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.mode-switch-slider {
+  position: absolute;
+  inset: 0;
+  background: rgba(36, 53, 74, 0.95);
+  border: 1px solid #4b678d;
+  border-radius: 999px;
+  transition: background 0.2s ease;
+}
+
+.mode-switch-slider::before {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  left: 2px;
+  top: 2px;
+  border-radius: 50%;
+  background: #cfe7ff;
+  transition: transform 0.2s ease;
+}
+
+.mode-switch input:checked + .mode-switch-slider {
+  background: linear-gradient(180deg, #2a89ff, #1f6fd1);
+  border-color: #62b2ff;
+}
+
+.mode-switch input:checked + .mode-switch-slider::before {
+  transform: translateX(22px);
+}
+
+.mode-switch input:disabled + .mode-switch-slider {
+  opacity: 0.55;
 }
 
 .setting-field-grid {
@@ -920,6 +956,12 @@ onUnmounted(() => {
     right: auto;
     left: 0;
     width: min(560px, calc(100vw - 2em));
+  }
+  .settings-overview {
+    grid-template-columns: 1fr;
+  }
+  .settings-card-wide {
+    grid-column: auto;
   }
   .setting-field-grid {
     grid-template-columns: 1fr;
