@@ -17,22 +17,24 @@ const (
 
 // Config アプリケーション設定
 type Config struct {
-	VisionPort   int    `json:"visionPort"`
-	TrackedPort  int    `json:"trackedPort"`
-	RefereePort  int    `json:"refereePort"`
-	GrSimAddress string `json:"grSimAddress"`
-	GrSimPort    int    `json:"grSimPort"`
-	mu           sync.RWMutex
+	VisionPort               int    `json:"visionPort"`
+	TrackedPort              int    `json:"trackedPort"`
+	RefereePort              int    `json:"refereePort"`
+	GrSimAddress             string `json:"grSimAddress"`
+	GrSimPort                int    `json:"grSimPort"`
+	AutoBallPlacementEnabled bool   `json:"autoBallPlacementEnabled"`
+	mu                       sync.RWMutex
 }
 
 // DefaultConfig デフォルト設定を返す
 func DefaultConfig() *Config {
 	return &Config{
-		VisionPort:   10006,
-		TrackedPort:  10010,
-		RefereePort:  10003,
-		GrSimAddress: "127.0.0.1",
-		GrSimPort:    20011,
+		VisionPort:               10006,
+		TrackedPort:              10010,
+		RefereePort:              10003,
+		GrSimAddress:             "127.0.0.1",
+		GrSimPort:                20011,
+		AutoBallPlacementEnabled: false,
 	}
 }
 
@@ -70,7 +72,12 @@ func (c *Config) Save() error {
 }
 
 // Update 設定を更新
-func (c *Config) Update(visionPort, trackedPort, refereePort int, grSimAddress string, grSimPort int) {
+func (c *Config) Update(
+	visionPort, trackedPort, refereePort int,
+	grSimAddress string,
+	grSimPort int,
+	autoBallPlacementEnabled bool,
+) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -89,6 +96,7 @@ func (c *Config) Update(visionPort, trackedPort, refereePort int, grSimAddress s
 	if grSimPort > 0 {
 		c.GrSimPort = grSimPort
 	}
+	c.AutoBallPlacementEnabled = autoBallPlacementEnabled
 }
 
 // GetAddresses 現在のアドレス設定を取得

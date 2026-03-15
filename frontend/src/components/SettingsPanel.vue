@@ -26,20 +26,26 @@ const trackedPort = ref(10010)
 const refereePort = ref(10003)
 const grSimAddress = ref('127.0.0.1')
 const grSimPort = ref(20011)
+const autoBallPlacementEnabled = ref(false)
 
 onMounted(async () => {
   // 設定を取得するが、値は手動で開いた時のみ更新
   await fetchConfig()
 })
 
+const loadFromConfig = () => {
+  visionPort.value = config.value.visionPort
+  trackedPort.value = config.value.trackedPort
+  refereePort.value = config.value.refereePort
+  grSimAddress.value = config.value.grSimAddress || '127.0.0.1'
+  grSimPort.value = config.value.grSimPort || 20011
+  autoBallPlacementEnabled.value = config.value.autoBallPlacementEnabled || false
+}
+
 const togglePanel = () => {
   if (!isOpen.value) {
     // パネルを開く時に設定値を読み込む
-    visionPort.value = config.value.visionPort
-    trackedPort.value = config.value.trackedPort
-    refereePort.value = config.value.refereePort
-    grSimAddress.value = config.value.grSimAddress || '127.0.0.1'
-    grSimPort.value = config.value.grSimPort || 20011
+    loadFromConfig()
   }
   isOpen.value = !isOpen.value
 }
@@ -51,15 +57,12 @@ const handleSave = async () => {
     refereePort: refereePort.value,
     grSimAddress: grSimAddress.value,
     grSimPort: grSimPort.value,
+    autoBallPlacementEnabled: autoBallPlacementEnabled.value,
   })
 }
 
 const handleReset = () => {
-  visionPort.value = config.value.visionPort
-  trackedPort.value = config.value.trackedPort
-  refereePort.value = config.value.refereePort
-  grSimAddress.value = config.value.grSimAddress || '127.0.0.1'
-  grSimPort.value = config.value.grSimPort || 20011
+  loadFromConfig()
 }
 
 const toggleLayer = (layerName: keyof LayerVisibility) => {
@@ -287,6 +290,17 @@ const onReplayFileSelected = (event: Event) => {
             />
           </label>
         </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Automation</div>
+        <label class="layer-item">
+          <input
+            type="checkbox"
+            v-model="autoBallPlacementEnabled"
+          />
+          <span>Auto Ball Placement</span>
+        </label>
 
         <div class="button-group">
           <button @click="handleReset" :disabled="loading" class="btn-secondary">リセット</button>

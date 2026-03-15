@@ -9,20 +9,22 @@ export interface Config {
   refereeIP?: string
   grSimAddress?: string
   grSimPort?: number
+  autoBallPlacementEnabled?: boolean
 }
 
 const API_BASE = '/api/config'
+const config = ref<Config>({
+  visionPort: 10006,
+  trackedPort: 10010,
+  refereePort: 10003,
+  autoBallPlacementEnabled: false,
+})
+
+const loading = ref(false)
+const error = ref<string | null>(null)
+const successMessage = ref<string | null>(null)
 
 export function useSettings() {
-  const config = ref<Config>({
-    visionPort: 10006,
-    trackedPort: 10010,
-    refereePort: 10003,
-  })
-
-  const loading = ref(false)
-  const error = ref<string | null>(null)
-  const successMessage = ref<string | null>(null)
 
   // 設定を取得
   const fetchConfig = async () => {
@@ -35,7 +37,10 @@ export function useSettings() {
         throw new Error('設定の取得に失敗しました')
       }
       const data = await response.json()
-      config.value = data
+      config.value = {
+        autoBallPlacementEnabled: false,
+        ...data,
+      }
     } catch (e) {
       error.value = e instanceof Error ? e.message : '不明なエラーが発生しました'
       console.error('Failed to fetch config:', e)
@@ -51,6 +56,7 @@ export function useSettings() {
     refereePort: number
     grSimAddress?: string
     grSimPort?: number
+    autoBallPlacementEnabled?: boolean
   }) => {
     loading.value = true
     error.value = null

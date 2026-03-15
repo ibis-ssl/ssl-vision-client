@@ -8,11 +8,12 @@ import (
 
 // ConfigUpdateRequest 設定更新リクエスト
 type ConfigUpdateRequest struct {
-	VisionPort   int    `json:"visionPort"`
-	TrackedPort  int    `json:"trackedPort"`
-	RefereePort  int    `json:"refereePort"`
-	GrSimAddress string `json:"grSimAddress"`
-	GrSimPort    int    `json:"grSimPort"`
+	VisionPort               int    `json:"visionPort"`
+	TrackedPort              int    `json:"trackedPort"`
+	RefereePort              int    `json:"refereePort"`
+	GrSimAddress             string `json:"grSimAddress"`
+	GrSimPort                int    `json:"grSimPort"`
+	AutoBallPlacementEnabled bool   `json:"autoBallPlacementEnabled"`
 }
 
 // ReceiverRestarter レシーバーを再起動するインターフェース
@@ -51,14 +52,15 @@ func handleGetConfig(w http.ResponseWriter, cfg *Config) {
 	visionPort, trackedPort, refereePort := cfg.GetPorts()
 
 	response := map[string]interface{}{
-		"visionPort":   visionPort,
-		"trackedPort":  trackedPort,
-		"refereePort":  refereePort,
-		"visionIP":     VisionIP,
-		"trackedIP":    TrackedIP,
-		"refereeIP":    RefereeIP,
-		"grSimAddress": cfg.GrSimAddress,
-		"grSimPort":    cfg.GrSimPort,
+		"visionPort":               visionPort,
+		"trackedPort":              trackedPort,
+		"refereePort":              refereePort,
+		"visionIP":                 VisionIP,
+		"trackedIP":                TrackedIP,
+		"refereeIP":                RefereeIP,
+		"grSimAddress":             cfg.GrSimAddress,
+		"grSimPort":                cfg.GrSimPort,
+		"autoBallPlacementEnabled": cfg.AutoBallPlacementEnabled,
 	}
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
@@ -89,7 +91,14 @@ func handleUpdateConfig(w http.ResponseWriter, r *http.Request, cfg *Config, res
 	}
 
 	// 設定を更新
-	cfg.Update(req.VisionPort, req.TrackedPort, req.RefereePort, req.GrSimAddress, req.GrSimPort)
+	cfg.Update(
+		req.VisionPort,
+		req.TrackedPort,
+		req.RefereePort,
+		req.GrSimAddress,
+		req.GrSimPort,
+		req.AutoBallPlacementEnabled,
+	)
 
 	// ファイルに保存
 	if err := cfg.Save(); err != nil {

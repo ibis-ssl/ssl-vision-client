@@ -8,7 +8,7 @@ import SvgGameEvents from '@/components/SvgGameEvents.vue'
 import SettingsPanel from '@/components/SettingsPanel.vue'
 import StatusBar from '@/components/StatusBar.vue'
 import type { LayerVisibility } from '@/components/LayerControl.vue'
-import { computed, inject, provide, ref, type Ref } from 'vue'
+import { computed, inject, provide, ref, watch, type Ref } from 'vue'
 import {
   useTrackedFrame,
   useTrackedSources,
@@ -17,6 +17,9 @@ import {
 } from '@/composables/vision.ts'
 import { useReferee } from '@/composables/referee.ts'
 import { useReplay } from '@/composables/replay.ts'
+import { useGrSimReplacement } from '@/composables/grsim'
+import { useSettings } from '@/composables/settings'
+import { Referee_Command } from '@/proto/gc/ssl_gc_referee_message_pb'
 
 const activeSource = ref('vision')
 const { field } = useVisionGeometry()
@@ -26,6 +29,8 @@ const { trackedFrame } = useTrackedFrame(activeSource)
 const { trackerSources } = useTrackedSources()
 const replay = useReplay()
 const replayState = replay.state
+const { replaceBall } = useGrSimReplacement()
+const { config } = useSettings()
 
 // grSim接続状態（将来の実装用に常にtrueと想定）
 const grsimConnected = ref(true)
@@ -58,6 +63,50 @@ const layerVisibility = ref<LayerVisibility>({
   fieldLines: true,
   fouls: true,
 })
+
+const lastAutoPlacementCommandCounter = ref<number | null>(null)
+
+watch(
+  () => referee.value?.commandCounter,
+  async (currentCommandCounter) => {
+    const currentReferee = referee.value
+    if (!currentReferee || currentCommandCounter === undefined) {
+      return
+    }
+    if (!config.value.autoBallPlacementEnabled || replayState.value.mode !== 'live') {
+      return
+    }
+    if (lastAutoPlacementCommandCounter.value === currentCommandCounter) {
+      return
+    }
+
+    const isBallPlacementCommand =
+      currentReferee.command === Referee_Command.BALL_PLACEMENT_YELLOW ||
+      currentReferee.command === Referee_Command.BALL_PLACEMENT_BLUE
+    const isGoalCommand =
+      currentReferee.command === Referee_Command.GOAL_YELLOW ||
+      currentReferee.command === Referee_Command.GOAL_BLUE
+
+    try {
+      if (isBallPlacementCommand && currentReferee.designatedPosition) {
+        const x = currentReferee.designatedPosition.x / 1000
+        const y = -currentReferee.designatedPosition.y / 1000
+        await replaceBall(x, y)
+        lastAutoPlacementCommandCounter.value = currentCommandCounter
+      } else if (isGoalCommand) {
+        await replaceBall(0, 0)
+        lastAutoPlacementCommandCounter.value = currentCommandCounter
+      }
+    } catch (error) {
+      if (isGoalCommand) {
+        console.error('Failed to move ball to center after GOAL:', error)
+      } else {
+        console.error('Failed to auto place ball:', error)
+      }
+    }
+  },
+  { immediate: true }
+)
 
 async function onModeUpdate(mode: 'live' | 'replay') {
   await replay.setMode(mode)
