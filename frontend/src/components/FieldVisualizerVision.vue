@@ -5,7 +5,6 @@ import SvgReferee from '@/components/SvgReferee.vue'
 import SvgTracked from '@/components/SvgTracked.vue'
 import SvgBallPlacement from '@/components/SvgBallPlacement.vue'
 import SvgGameEvents from '@/components/SvgGameEvents.vue'
-import SettingsPanel from '@/components/SettingsPanel.vue'
 import StatusBar from '@/components/StatusBar.vue'
 import type { LayerVisibility } from '@/components/LayerControl.vue'
 import { computed, inject, provide, ref, watch, type Ref } from 'vue'
@@ -120,20 +119,14 @@ async function onModeUpdate(mode: 'live' | 'replay') {
 async function onReplayFileSelected(file: File) {
   await replay.uploadFile(file)
 }
+
+function onToggleLayer(layerName: keyof LayerVisibility) {
+  layerVisibility.value[layerName] = !layerVisibility.value[layerName]
+}
 </script>
 
 <template>
   <div class="visualizer-container">
-    <SettingsPanel
-      :sources="sources"
-      :mode="replayState.mode"
-      :replay-loaded="replayState.loaded"
-      :replay-file-name="replayState.fileName"
-      v-model:layer-visibility="layerVisibility"
-      v-model:active-source="activeSource"
-      @update:mode="onModeUpdate"
-      @replay-file-selected="onReplayFileSelected"
-    />
     <div
       class="field-container"
       :class="{
@@ -174,7 +167,11 @@ async function onReplayFileSelected(file: File) {
       :referee-connected="refereeConnected"
       :grsim-connected="grsimConnected"
       :replay-state="replayState"
+      :layer-visibility="layerVisibility"
       @update:active-source="activeSource = $event"
+      @update:mode="onModeUpdate"
+      @replay-file-selected="onReplayFileSelected"
+      @toggle-layer="onToggleLayer"
       @replay-play="replay.play"
       @replay-pause="replay.pause"
       @replay-seek="replay.seek"
