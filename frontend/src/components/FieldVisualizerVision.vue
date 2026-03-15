@@ -67,8 +67,13 @@ const layerVisibility = ref<LayerVisibility>({
 const lastAutoPlacementCommandCounter = ref<number | null>(null)
 
 watch(
-  () => referee.value?.commandCounter,
-  async (currentCommandCounter) => {
+  [
+    () => referee.value?.commandCounter,
+    () => referee.value?.command,
+    () => config.value.autoBallPlacementEnabled,
+    () => replayState.value.mode,
+  ],
+  async ([currentCommandCounter]) => {
     const currentReferee = referee.value
     if (!currentReferee || currentCommandCounter === undefined) {
       return
@@ -90,7 +95,7 @@ watch(
     try {
       if (isBallPlacementCommand && currentReferee.designatedPosition) {
         const x = currentReferee.designatedPosition.x / 1000
-        const y = -currentReferee.designatedPosition.y / 1000
+        const y = currentReferee.designatedPosition.y / 1000
         await replaceBall(x, y)
         lastAutoPlacementCommandCounter.value = currentCommandCounter
       } else if (isGoalCommand) {
