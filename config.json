@@ -4,5 +4,6 @@
   "refereePort": 11003,
   "grSimAddress": "127.0.0.1",
   "grSimPort": 20011,
-  "autoBallPlacementEnabled": true
+  "autoBallPlacementEnabled": false,
+  "autoCenterAfterGoalEnabled": false
 }

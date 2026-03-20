@@ -3,6 +3,7 @@ import type { Referee } from '@/proto/gc/ssl_gc_referee_message_pb.ts'
 import type { ReplayState } from '@/composables/replay.ts'
 import type { LayerVisibility } from '@/components/LayerControl.vue'
 import { useSettings } from '@/composables/settings'
+import { formatTimeNs } from '@/utils/time'
 import { computed, inject, onMounted, onUnmounted, ref, type Ref } from 'vue'
 
 interface Props {
@@ -24,11 +25,6 @@ interface Emits {
   (e: 'update:mode', mode: 'live' | 'replay'): void
   (e: 'replay-file-selected', file: File): void
   (e: 'toggle-layer', layerName: keyof LayerVisibility): void
-  (e: 'replay-play'): void
-  (e: 'replay-pause'): void
-  (e: 'replay-seek', positionNs: number): void
-  (e: 'replay-step', delta: number): void
-  (e: 'replay-rate', rate: number): void
 }
 
 const emit = defineEmits<Emits>()
@@ -122,49 +118,13 @@ const selectedText = computed(() => {
 
 const sourceOptions = computed(() => Object.entries(props.sources))
 const replayMode = computed(() => props.replayState.mode === 'replay')
-const replayModeToggle = computed({
-  get: () => props.replayState.mode === 'replay',
-  set: (enabled: boolean) => emit('update:mode', enabled ? 'replay' : 'live'),
-})
-const replayDuration = computed(() => Math.max(props.replayState.durationNs, 0))
-const replayPosition = computed(() => Math.min(props.replayState.positionNs, replayDuration.value))
-
-const replayAnnotations = computed(() => {
-  const duration = replayDuration.value
-  if (duration <= 0) return []
-  return props.replayState.annotations.map((a) => ({
-    ...a,
-    left: (a.timestampNs / duration) * 100,
-  }))
-})
 
 function changeSource(source: string) {
   emit('update:activeSource', source)
 }
 
-function formatTimeNs(ns: number): string {
-  const sec = Math.max(0, Math.floor(ns / 1e9))
-  const m = Math.floor(sec / 60)
-  const s = sec % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
-
-function onSeek(event: Event) {
-  const el = event.target as HTMLInputElement
-  emit('replay-seek', Number(el.value))
-}
-
-function togglePlayPause() {
-  if (props.replayState.playing) {
-    emit('replay-pause')
-  } else {
-    emit('replay-play')
-  }
-}
-
-function onRateChange(event: Event) {
-  const el = event.target as HTMLSelectElement
-  emit('replay-rate', Number(el.value))
+function toggleMode() {
+  emit('update:mode', replayMode.value ? 'live' : 'replay')
 }
 
 function syncInputsFromConfig() {
@@ -229,7 +189,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div id="status-bar" :class="{ 'with-replay': replayMode }">
+  <div id="status-bar">
     <div class="main-row">
       <div class="info-section connection-status">
         <span class="label">接続:</span>
@@ -237,6 +197,9 @@ onUnmounted(() => {
         <span class="connection-indicator" :class="{ connected: refereeConnected }" title="Referee">R</span>
         <span class="connection-indicator" :class="{ connected: grsimConnected }" title="grSim">G</span>
       </div>
+      <button class="mode-badge" :class="{ replay: replayMode }" @click="toggleMode()">
+        {{ replayMode ? 'REPLAY' : 'LIVE' }}
+      </button>
 
       <div class="info-section source-selector">
         <span class="label">ソース:</span>
@@ -290,14 +253,6 @@ onUnmounted(() => {
 
             <div class="settings-group settings-card">
               <span class="settings-group-title">Replay Source</span>
-              <div class="mode-switch-row">
-                <span class="mode-switch-label" :class="{ active: !replayModeToggle }">Live</span>
-                <label class="mode-switch" aria-label="Toggle replay mode">
-                  <input v-model="replayModeToggle" type="checkbox" :disabled="settingsLoading || props.replayLoading" />
-                  <span class="mode-switch-slider" />
-                </label>
-                <span class="mode-switch-label" :class="{ active: replayModeToggle }">Replay</span>
-              </div>
               <div class="file-picker">
                 <label class="setting-field-label">
                   <span>Replay Log</span>
@@ -349,55 +304,6 @@ onUnmounted(() => {
           </div>
         </div>
       </details>
-    </div>
-
-    <div v-if="replayMode || props.replayLoading" class="replay-row" :class="{ loading: props.replayLoading }">
-      <div v-if="props.replayLoading" class="replay-loading-overlay" role="status" aria-live="polite">
-        <span class="spinner large" aria-hidden="true" />
-        <span class="overlay-text">ログファイルを読み込み中...</span>
-      </div>
-      <div class="replay-controls" role="group" aria-label="Replay controls">
-        <button class="replay-button ghost" title="Previous frame" :disabled="props.replayLoading" @click="emit('replay-step', -1)">◀◀</button>
-        <button class="replay-button primary" title="Play or pause" :disabled="props.replayLoading" @click="togglePlayPause">{{ props.replayState.playing ? 'Pause' : 'Play' }}</button>
-        <button class="replay-button ghost" title="Next frame" :disabled="props.replayLoading" @click="emit('replay-step', 1)">▶▶</button>
-        <label class="rate-select-wrap">
-          <span>Rate</span>
-          <select class="replay-rate" :value="props.replayState.rate" :disabled="props.replayLoading" @change="onRateChange">
-            <option :value="0.25">0.25x</option>
-            <option :value="0.5">0.5x</option>
-            <option :value="1">1x</option>
-            <option :value="1.5">1.5x</option>
-            <option :value="2">2x</option>
-          </select>
-        </label>
-      </div>
-
-      <div class="timeline-wrap">
-        <div class="timeline-markers">
-          <span
-            v-for="(annotation, idx) in replayAnnotations"
-            :key="`ann-${idx}-${annotation.timestampNs}`"
-            class="timeline-marker"
-            :style="{ left: `${annotation.left}%` }"
-            :title="annotation.label"
-          />
-        </div>
-        <input
-          class="timeline-slider"
-          type="range"
-          min="0"
-          :max="replayDuration"
-          :value="replayPosition"
-          :disabled="props.replayLoading"
-          @input="onSeek"
-        />
-      </div>
-
-      <div class="replay-time">
-        <span class="current-time">{{ formatTimeNs(replayPosition) }}</span>
-        <span class="time-separator">/</span>
-        <span>{{ formatTimeNs(replayDuration) }}</span>
-      </div>
     </div>
 
   </div>
@@ -553,150 +459,31 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
-.replay-row {
-  position: relative;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 0.9em;
-  align-items: center;
-  background: linear-gradient(180deg, rgba(10, 18, 29, 0.96), rgba(6, 12, 21, 0.96));
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 0.55em 0.65em;
-}
-
-.replay-row.loading .replay-controls,
-.replay-row.loading .timeline-wrap,
-.replay-row.loading .replay-time {
-  opacity: 0.35;
-}
-
-.replay-loading-overlay {
-  position: absolute;
-  inset: 0.25em;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.7em;
-  border-radius: 8px;
-  background: rgba(5, 13, 24, 0.72);
-  border: 1px solid #4da0ff;
-  backdrop-filter: blur(2px);
-}
-
-.overlay-text {
-  font-size: 0.98em;
+.mode-badge {
+  font-size: 0.72em;
   font-weight: 800;
-  letter-spacing: 0.03em;
-  color: #d9ecff;
-  text-shadow: 0 0 8px rgba(77, 160, 255, 0.45);
-}
-
-.replay-controls {
-  display: flex;
-  align-items: center;
-  gap: 0.45em;
-  flex-wrap: wrap;
-}
-
-.replay-button {
-  border: 1px solid transparent;
-  color: white;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   border-radius: 999px;
-  padding: 0.3em 0.9em;
+  padding: 0.2em 0.65em;
   cursor: pointer;
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  font-family: monospace;
+  transition: filter 0.15s;
+  background: transparent;
 }
 
-.replay-button:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
+.mode-badge:hover {
+  filter: brightness(1.2);
 }
 
-.replay-button.ghost {
-  background: rgba(12, 20, 32, 0.95);
-  border-color: var(--line-strong);
+.mode-badge:not(.replay) {
+  border: 1px solid #44ff44;
+  color: #44ff44;
 }
 
-.replay-button.primary {
-  background: linear-gradient(180deg, #2a89ff, #1f6fd1);
-  border-color: #4da0ff;
-}
-
-.replay-button:hover {
-  filter: brightness(1.08);
-}
-
-.replay-rate {
-  border: 1px solid var(--line-strong);
-  background: rgba(10, 14, 18, 0.92);
-  color: white;
-  border-radius: 999px;
-  padding: 0.28em 0.52em;
-}
-
-.rate-select-wrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45em;
-  color: var(--text-muted);
-  font-size: 0.82em;
-  padding: 0.22em 0.35em 0.22em 0.5em;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(12, 20, 32, 0.8);
-}
-
-.timeline-wrap {
-  position: relative;
-  background: rgba(4, 9, 16, 0.95);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 0.18em 0.45em;
-}
-
-.timeline-slider {
-  width: 100%;
-  accent-color: var(--accent);
-}
-
-.timeline-markers {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  pointer-events: none;
-}
-
-.timeline-marker {
-  position: absolute;
-  width: 2px;
-  height: 10px;
-  background: #ffd700;
-  transform: translateX(-1px) translateY(-50%);
-}
-
-.replay-time {
-  min-width: 110px;
-  text-align: right;
-  color: #d7e7fb;
-  font-variant-numeric: tabular-nums;
-  background: rgba(12, 20, 32, 0.8);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 0.24em 0.55em;
-}
-
-.current-time {
-  color: #9ad0ff;
-  font-weight: 700;
-}
-
-.time-separator {
-  color: #7f99b9;
-  margin: 0 0.25em;
+.mode-badge.replay {
+  border: 1px solid #79c0ff;
+  color: #79c0ff;
 }
 
 .settings-drawer {
@@ -808,70 +595,6 @@ onUnmounted(() => {
   color: #d4e7ff;
 }
 
-.mode-switch-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55em;
-}
-
-.mode-switch-label {
-  font-size: 0.86em;
-  color: #95b2d3;
-  font-weight: 600;
-}
-
-.mode-switch-label.active {
-  color: #e6f3ff;
-}
-
-.mode-switch {
-  position: relative;
-  width: 46px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-}
-
-.mode-switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.mode-switch-slider {
-  position: absolute;
-  inset: 0;
-  background: rgba(36, 53, 74, 0.95);
-  border: 1px solid #4b678d;
-  border-radius: 999px;
-  transition: background 0.2s ease;
-}
-
-.mode-switch-slider::before {
-  content: '';
-  position: absolute;
-  width: 18px;
-  height: 18px;
-  left: 2px;
-  top: 2px;
-  border-radius: 50%;
-  background: #cfe7ff;
-  transition: transform 0.2s ease;
-}
-
-.mode-switch input:checked + .mode-switch-slider {
-  background: linear-gradient(180deg, #2a89ff, #1f6fd1);
-  border-color: #62b2ff;
-}
-
-.mode-switch input:checked + .mode-switch-slider::before {
-  transform: translateX(22px);
-}
-
-.mode-switch input:disabled + .mode-switch-slider {
-  opacity: 0.55;
-}
-
 .setting-field-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -911,27 +634,6 @@ onUnmounted(() => {
   color: var(--text-muted);
 }
 
-.spinner {
-  width: 0.9em;
-  height: 0.9em;
-  border: 2px solid rgba(184, 218, 255, 0.35);
-  border-top-color: #b8daff;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-.spinner.large {
-  width: 1.2em;
-  height: 1.2em;
-  border-width: 3px;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .config-buttons {
   display: flex;
   gap: 0.5em;
@@ -949,13 +651,6 @@ onUnmounted(() => {
 }
 
 @media (max-width: 900px) {
-  .replay-row {
-    grid-template-columns: 1fr;
-    gap: 0.5em;
-  }
-  .replay-time {
-    text-align: left;
-  }
   .settings-panel {
     right: auto;
     left: 0;

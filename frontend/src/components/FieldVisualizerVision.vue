@@ -6,6 +6,8 @@ import SvgTracked from '@/components/SvgTracked.vue'
 import SvgBallPlacement from '@/components/SvgBallPlacement.vue'
 import SvgGameEvents from '@/components/SvgGameEvents.vue'
 import StatusBar from '@/components/StatusBar.vue'
+import ReplayBar from '@/components/ReplayBar.vue'
+import ReplayModeIndicator from '@/components/ReplayModeIndicator.vue'
 import type { LayerVisibility } from '@/components/LayerControl.vue'
 import { computed, inject, onMounted, onUnmounted, provide, ref, watch, type Ref } from 'vue'
 import {
@@ -33,6 +35,8 @@ const { config } = useSettings()
 
 // grSim接続状態（将来の実装用に常にtrueと想定）
 const grsimConnected = ref(true)
+
+const showReplayBar = computed(() => replayState.value.mode === 'replay' || replay.loading.value)
 
 const svgVisionRef = ref<InstanceType<typeof SvgVision>>()
 
@@ -259,7 +263,7 @@ onUnmounted(() => {
       class="field-container"
       :class="{
         'with-referee-info': true,
-        'with-replay-controls': replayState.mode === 'replay',
+        'with-replay-bar': showReplayBar,
       }"
     >
       <FieldVisualizer :field="field" :show-field-lines="layerVisibility.fieldLines" @move-object="onMoveObject">
@@ -285,7 +289,18 @@ onUnmounted(() => {
         />
         <SvgTracked v-if="trackedFrame" :tracked-frame="trackedFrame" />
       </FieldVisualizer>
+      <ReplayModeIndicator :visible="replayState.mode === 'replay'" />
     </div>
+    <ReplayBar
+      v-if="showReplayBar"
+      :replay-state="replayState"
+      :loading="replay.loading.value"
+      @play="replay.play"
+      @pause="replay.pause"
+      @seek="replay.seek"
+      @step="replay.step"
+      @rate="replay.setRate"
+    />
     <StatusBar
       :referee="referee"
       :active-source="activeSource"
@@ -300,11 +315,6 @@ onUnmounted(() => {
       @update:mode="onModeUpdate"
       @replay-file-selected="onReplayFileSelected"
       @toggle-layer="onToggleLayer"
-      @replay-play="replay.play"
-      @replay-pause="replay.pause"
-      @replay-seek="replay.seek"
-      @replay-step="replay.step"
-      @replay-rate="replay.setRate"
     />
   </div>
 </template>
@@ -319,13 +329,14 @@ onUnmounted(() => {
 .field-container {
   width: 100%;
   height: 100%;
+  position: relative;
 }
 
 .field-container.with-referee-info {
   height: calc(100% - 4em);
 }
 
-.field-container.with-replay-controls {
+.field-container.with-replay-bar {
   height: calc(100% - 8em);
 }
 </style>
