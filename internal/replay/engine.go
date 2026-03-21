@@ -94,15 +94,6 @@ func (e *Engine) LoadFromReader(reader io.Reader, fileName string) error {
 	e.cleanupLocked()
 	e.errorMsg = ""
 	e.fileName = fileName
-	e.playing = false
-	e.positionNs = 0
-	e.currentEventIndex = -1
-	e.currentSnapshot = emptySnapshot()
-	e.events = nil
-	e.displayEventIdx = nil
-	e.displayTimestamps = nil
-	e.annotations = nil
-	e.checkpoints = nil
 
 	if err := os.MkdirAll(e.tmpDir, 0o755); err != nil {
 		e.errorMsg = err.Error()
@@ -125,6 +116,7 @@ func (e *Engine) LoadFromReader(reader io.Reader, fileName string) error {
 		e.errorMsg = err.Error()
 		return err
 	}
+	e.uploadPath = uploadPath
 
 	logPath := uploadPath
 	if filepath.Ext(fileName) == ".gz" {
@@ -134,15 +126,44 @@ func (e *Engine) LoadFromReader(reader io.Reader, fileName string) error {
 			return err
 		}
 	}
+	e.workingPath = logPath
 
+	return e.finalizeLocked(logPath)
+}
+
+func (e *Engine) LoadFromPath(path string) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	e.cleanupLocked()
+	e.errorMsg = ""
+	e.fileName = filepath.Base(path)
+
+	logPath := path
+	if filepath.Ext(path) == ".gz" {
+		if err := os.MkdirAll(e.tmpDir, 0o755); err != nil {
+			e.errorMsg = err.Error()
+			return err
+		}
+		tmpLog := filepath.Join(e.tmpDir, fmt.Sprintf("%d.log", time.Now().UnixNano()))
+		if err := gunzipFile(path, tmpLog); err != nil {
+			e.errorMsg = err.Error()
+			return err
+		}
+		logPath = tmpLog
+		e.workingPath = tmpLog
+	}
+
+	return e.finalizeLocked(logPath)
+}
+
+func (e *Engine) finalizeLocked(logPath string) error {
 	pr, err := persistence.NewReader(logPath)
 	if err != nil {
 		e.errorMsg = err.Error()
 		return err
 	}
 	e.reader = pr
-	e.workingPath = logPath
-	e.uploadPath = uploadPath
 
 	if err := e.buildIndexLocked(); err != nil {
 		e.errorMsg = err.Error()
@@ -150,7 +171,6 @@ func (e *Engine) LoadFromReader(reader io.Reader, fileName string) error {
 	}
 
 	e.loaded = len(e.displayEventIdx) > 0
-	e.playing = false
 	if e.loaded {
 		e.baseTimestampNs = e.displayTimestamps[0]
 		e.durationNs = e.displayTimestamps[len(e.displayTimestamps)-1] - e.baseTimestampNs

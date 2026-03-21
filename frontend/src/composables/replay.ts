@@ -92,6 +92,27 @@ export function useReplay() {
     }
   }
 
+  const loadFromPath = async (path: string) => {
+    loading.value = true
+    try {
+      const res = await fetch('/api/replay/load-path', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path }),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(text || 'Load from path failed')
+      }
+      state.value = await res.json()
+      error.value = null
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Load from path failed'
+    } finally {
+      loading.value = false
+    }
+  }
+
   const setMode = async (mode: ReplayMode) => {
     await postControl({ action: 'set_mode', mode })
   }
@@ -119,6 +140,7 @@ export function useReplay() {
     error,
     fetchState,
     uploadFile,
+    loadFromPath,
     setMode,
     play,
     pause,

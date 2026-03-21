@@ -251,6 +251,10 @@ func (rm *ReceiverManager) LoadReplay(file io.Reader, filename string) error {
 	return rm.replayEngine.LoadFromReader(file, filename)
 }
 
+func (rm *ReceiverManager) LoadReplayFromPath(path string) error {
+	return rm.replayEngine.LoadFromPath(path)
+}
+
 func parseSkipInterfaces() []string {
 	return strings.Split(*skipInterfaces, ",")
 }

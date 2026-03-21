@@ -158,6 +158,13 @@ async function onReplayFileSelected(file: File) {
   }
 }
 
+async function onReplayPathSelected(path: string) {
+  await replay.loadFromPath(path)
+  if (replay.state.value.mode !== 'replay') {
+    await replay.setMode('replay')
+  }
+}
+
 function onToggleLayer(layerName: keyof LayerVisibility) {
   layerVisibility.value[layerName] = !layerVisibility.value[layerName]
 }
@@ -314,6 +321,7 @@ onUnmounted(() => {
       @update:active-source="activeSource = $event"
       @update:mode="onModeUpdate"
       @replay-file-selected="onReplayFileSelected"
+      @replay-path-selected="onReplayPathSelected"
       @toggle-layer="onToggleLayer"
     />
   </div>

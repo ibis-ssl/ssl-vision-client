@@ -30,6 +30,7 @@ func addRoutes(
 	mux.Handle("/api/referee", gc.HandleReferee(RefereeProvider))
 	mux.Handle("/api/config", config.HandleConfig(cfg, restarter))
 	mux.Handle("/api/replay/upload", replay.HandleUpload(replayService))
+	mux.Handle("/api/replay/load-path", replay.HandleLoadPath(replayService))
 	mux.Handle("/api/replay/state", replay.HandleState(replayService))
 	mux.Handle("/api/replay/control", replay.HandleControl(replayService))
 	mux.Handle("/api/grsim/ball", grsim.HandleReplaceBall(grSimSender))

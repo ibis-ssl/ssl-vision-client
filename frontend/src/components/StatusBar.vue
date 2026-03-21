@@ -24,6 +24,7 @@ interface Emits {
   (e: 'update:activeSource', source: string): void
   (e: 'update:mode', mode: 'live' | 'replay'): void
   (e: 'replay-file-selected', file: File): void
+  (e: 'replay-path-selected', path: string): void
   (e: 'toggle-layer', layerName: keyof LayerVisibility): void
 }
 
@@ -157,6 +158,15 @@ function onReplayFileSelected(event: Event) {
   }
 }
 
+const replayServerPath = ref('')
+
+function onReplayPathLoad() {
+  const path = replayServerPath.value.trim()
+  if (path) {
+    emit('replay-path-selected', path)
+  }
+}
+
 function closeSettingsDrawer() {
   settingsDrawerRef.value?.removeAttribute('open')
 }
@@ -259,6 +269,13 @@ onUnmounted(() => {
                   <input class="input-control" type="file" accept=".log,.gz,.log.gz" :disabled="settingsLoading || props.replayLoading" @change="onReplayFileSelected" />
                 </label>
                 <div class="drop-hint">Select .log / .log.gz file</div>
+              </div>
+              <div class="file-picker">
+                <label class="setting-field-label">
+                  <span>Server Path</span>
+                  <input class="input-control" type="text" placeholder="/path/to/file.log" v-model="replayServerPath" :disabled="props.replayLoading" @keydown.enter="onReplayPathLoad" />
+                </label>
+                <button class="btn-load-path" :disabled="props.replayLoading || !replayServerPath.trim()" @click="onReplayPathLoad">Load</button>
               </div>
             </div>
 
@@ -632,6 +649,26 @@ onUnmounted(() => {
 .drop-hint {
   font-size: 0.78em;
   color: var(--text-muted);
+}
+
+.btn-load-path {
+  margin-top: 0.4em;
+  padding: 0.3em 0.8em;
+  background: #1e3a5f;
+  color: white;
+  border: 1px solid #3b5677;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85em;
+}
+
+.btn-load-path:hover:not(:disabled) {
+  background: #2a5080;
+}
+
+.btn-load-path:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .config-buttons {
