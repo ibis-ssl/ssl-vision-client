@@ -8,7 +8,25 @@ import { useToast, type ToastCategory } from '@/composables/toast'
 import { useNotificationSettings } from '@/composables/notificationSettings'
 import { formatTimeNs } from '@/utils/time'
 import { REFEREE_COMMAND_LABELS } from '@/utils/referee'
+import { Referee_Stage } from '@/proto/gc/ssl_gc_referee_message_pb.ts'
 import { computed, inject, onMounted, onUnmounted, ref, watch, type Ref } from 'vue'
+
+const STAGE_MAP: Record<number, string> = {
+  [Referee_Stage.NORMAL_FIRST_HALF_PRE]:    'NORMAL_FIRST_HALF_PRE',
+  [Referee_Stage.NORMAL_FIRST_HALF]:        'NORMAL_FIRST_HALF',
+  [Referee_Stage.NORMAL_HALF_TIME]:         'NORMAL_HALF_TIME',
+  [Referee_Stage.NORMAL_SECOND_HALF_PRE]:   'NORMAL_SECOND_HALF_PRE',
+  [Referee_Stage.NORMAL_SECOND_HALF]:       'NORMAL_SECOND_HALF',
+  [Referee_Stage.EXTRA_TIME_BREAK]:         'EXTRA_TIME_BREAK',
+  [Referee_Stage.EXTRA_FIRST_HALF_PRE]:     'EXTRA_FIRST_HALF_PRE',
+  [Referee_Stage.EXTRA_FIRST_HALF]:         'EXTRA_FIRST_HALF',
+  [Referee_Stage.EXTRA_HALF_TIME]:          'EXTRA_HALF_TIME',
+  [Referee_Stage.EXTRA_SECOND_HALF_PRE]:    'EXTRA_SECOND_HALF_PRE',
+  [Referee_Stage.EXTRA_SECOND_HALF]:        'EXTRA_SECOND_HALF',
+  [Referee_Stage.PENALTY_SHOOTOUT_BREAK]:   'PENALTY_SHOOTOUT_BREAK',
+  [Referee_Stage.PENALTY_SHOOTOUT]:         'PENALTY_SHOOTOUT',
+  [Referee_Stage.POST_GAME]:                'POST_GAME',
+}
 
 interface Props {
   referee: Referee | null | undefined
@@ -76,23 +94,7 @@ const selectedObject = inject<Ref<{
 
 const stageText = computed(() => {
   if (!props.referee) return '--'
-  const stageMap: { [key: number]: string } = {
-    0: 'NORMAL_FIRST_HALF_PRE',
-    1: 'NORMAL_FIRST_HALF',
-    2: 'NORMAL_HALF_TIME',
-    3: 'NORMAL_SECOND_HALF_PRE',
-    4: 'NORMAL_SECOND_HALF',
-    5: 'EXTRA_TIME_BREAK',
-    6: 'EXTRA_FIRST_HALF_PRE',
-    7: 'EXTRA_FIRST_HALF',
-    8: 'EXTRA_HALF_TIME',
-    9: 'EXTRA_SECOND_HALF_PRE',
-    10: 'EXTRA_SECOND_HALF',
-    11: 'PENALTY_SHOOTOUT_BREAK',
-    12: 'PENALTY_SHOOTOUT',
-    13: 'POST_GAME',
-  }
-  return stageMap[props.referee.stage] || `STAGE_${props.referee.stage}`
+  return STAGE_MAP[props.referee.stage] ?? `STAGE_${props.referee.stage}`
 })
 
 const commandText = computed(() => {

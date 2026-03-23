@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { GameEvent, GameEvent_Type } from '@/proto/gc/ssl_gc_game_event_pb.ts'
+import { GameEvent_Type } from '@/proto/gc/ssl_gc_game_event_pb.ts'
+import type { GameEvent } from '@/proto/gc/ssl_gc_game_event_pb.ts'
 import type { Team } from '@/proto/gc/ssl_gc_common_pb.ts'
 import { computed, inject, onMounted, onUnmounted, ref, type Ref } from 'vue'
 
@@ -47,17 +48,33 @@ const visibleEvents = computed(() => {
   })
 })
 
-// ファールタイプごとの日本語名とアイコン
-const foulInfo: Record<number, { name: string; icon: string }> = {
-  22: { name: 'CRASH', icon: '💥' }, // BOT_CRASH_UNIQUE
-  21: { name: 'CRASH', icon: '💥' }, // BOT_CRASH_DRAWN
-  24: { name: 'PUSH', icon: '👊' }, // BOT_PUSHED_BOT
-  31: { name: 'エリア内', icon: '🚫' }, // DEFENDER_IN_DEFENSE_AREA
-  19: { name: '接近', icon: '⚠️' }, // ATTACKER_TOO_CLOSE_TO_DEFENSE_AREA
-  17: { name: 'ドリブル', icon: '🏃' }, // BOT_DRIBBLED_BALL_TOO_FAR
-  18: { name: '速度超過', icon: '⚡' }, // BOT_KICKED_BALL_TOO_FAST
-  28: { name: 'STOP超過', icon: '🚦' }, // BOT_TOO_FAST_IN_STOP
-  29: { name: 'キック点', icon: '📍' }, // DEFENDER_TOO_CLOSE_TO_KICK_POINT
+// ファールタイプごとの日本語名とアイコン（SSLルール準拠）
+const foulInfo: Partial<Record<GameEvent_Type, { name: string; icon: string }>> = {
+  // ボールアウト
+  [GameEvent_Type.BALL_LEFT_FIELD_TOUCH_LINE]:           { name: 'タッチライン通過', icon: '🟡' },
+  [GameEvent_Type.BALL_LEFT_FIELD_GOAL_LINE]:            { name: 'ゴールライン通過', icon: '🟡' },
+  [GameEvent_Type.AIMLESS_KICK]:                         { name: 'エイムレスキック', icon: '🟡' },
+  // 試合停止を伴うファール
+  [GameEvent_Type.KEEPER_HELD_BALL]:                     { name: 'キーパーボール保持', icon: '🛑' },
+  [GameEvent_Type.ATTACKER_DOUBLE_TOUCHED_BALL]:         { name: 'ダブルタッチ', icon: '🛑' },
+  [GameEvent_Type.BOT_DRIBBLED_BALL_TOO_FAR]:            { name: 'オーバードリブル', icon: '🛑' },
+  [GameEvent_Type.ATTACKER_TOO_CLOSE_TO_DEFENSE_AREA]:   { name: 'エリア接近', icon: '🛑' },
+  [GameEvent_Type.BOT_PUSHED_BOT]:                       { name: 'プッシング', icon: '🛑' },
+  [GameEvent_Type.BOT_HELD_BALL_DELIBERATELY]:           { name: 'ホールディング', icon: '🛑' },
+  [GameEvent_Type.BOT_TIPPED_OVER]:                      { name: '転倒', icon: '🛑' },
+  [GameEvent_Type.DEFENDER_IN_DEFENSE_AREA]:             { name: 'マルチプルDF', icon: '🛑' },
+  [GameEvent_Type.BOUNDARY_CROSSING]:                    { name: '境界線横断', icon: '🛑' },
+  [GameEvent_Type.BOT_DROPPED_PARTS]:                    { name: '部品脱落', icon: '🛑' },
+  // 試合停止を伴わないファール
+  [GameEvent_Type.ATTACKER_TOUCHED_BALL_IN_DEFENSE_AREA]: { name: 'エリア内タッチ', icon: '⚠️' },
+  [GameEvent_Type.BOT_KICKED_BALL_TOO_FAST]:             { name: 'ボール速度超過', icon: '⚠️' },
+  [GameEvent_Type.BOT_CRASH_DRAWN]:                      { name: '衝突(引分)', icon: '⚠️' },
+  [GameEvent_Type.BOT_CRASH_UNIQUE]:                     { name: '衝突', icon: '⚠️' },
+  // アウトオブプレイ中のファール
+  [GameEvent_Type.BOT_INTERFERED_PLACEMENT]:             { name: '配置妨害', icon: '⚠️' },
+  [GameEvent_Type.BOT_TOO_FAST_IN_STOP]:                 { name: 'ストップ中速度超過', icon: '⚠️' },
+  [GameEvent_Type.DEFENDER_TOO_CLOSE_TO_KICK_POINT]:     { name: 'ボール接近', icon: '⚠️' },
+  [GameEvent_Type.EXCESSIVE_BOT_SUBSTITUTION]:           { name: '交代回数超過', icon: '⚠️' },
 }
 
 // チームカラーを取得
