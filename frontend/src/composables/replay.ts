@@ -34,10 +34,12 @@ const defaultState: ReplayState = {
 export function useReplay() {
   const state = ref<ReplayState>({ ...defaultState })
   const loading = ref(false)
+  const isSeeking = ref(false)
   const error = ref<string | null>(null)
   let timerId: number | undefined
 
   const fetchState = async () => {
+    if (isSeeking.value) return
     try {
       const res = await fetch('/api/replay/state')
       if (!res.ok) return
@@ -50,7 +52,6 @@ export function useReplay() {
   }
 
   const postControl = async (payload: Record<string, unknown>) => {
-    loading.value = true
     try {
       const res = await fetch('/api/replay/control', {
         method: 'POST',
@@ -65,8 +66,6 @@ export function useReplay() {
       error.value = null
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Control request failed'
-    } finally {
-      loading.value = false
     }
   }
 
@@ -137,6 +136,7 @@ export function useReplay() {
   return {
     state,
     loading,
+    isSeeking,
     error,
     fetchState,
     uploadFile,

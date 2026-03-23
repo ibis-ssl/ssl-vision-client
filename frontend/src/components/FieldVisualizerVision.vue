@@ -42,7 +42,7 @@ const showReplayBar = computed(() => replayState.value.mode === 'replay' || repl
 const ballPosition = computed(() => {
   if (detectionFrame.value?.balls?.length) {
     const ball = detectionFrame.value.balls[0]
-    return { x: ball.x / 1000, y: -ball.y / 1000 }
+    if (ball) return { x: ball.x / 1000, y: -ball.y / 1000 }
   }
   if (trackedFrame.value?.balls?.length) {
     const ball = trackedFrame.value.balls[0]
@@ -322,6 +322,7 @@ onUnmounted(() => {
       @seek="replay.seek"
       @step="replay.step"
       @rate="replay.setRate"
+      @drag-state="(v: boolean) => (replay.isSeeking.value = v)"
     />
     <StatusBar
       :referee="referee"

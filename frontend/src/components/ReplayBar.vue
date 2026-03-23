@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ReplayState, ReplayAnnotation } from '@/composables/replay.ts'
 import { formatTimeNs } from '@/utils/time'
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 interface Props {
   replayState: ReplayState
@@ -14,6 +14,7 @@ interface Emits {
   (e: 'seek', positionNs: number): void
   (e: 'step', delta: number): void
   (e: 'rate', rate: number): void
+  (e: 'drag-state', isDragging: boolean): void
 }
 
 const props = defineProps<Props>()
@@ -47,6 +48,63 @@ function onRateChange(event: Event) {
 const timelineTrackRef = ref<HTMLDivElement | null>(null)
 const isDragging = ref(false)
 
+// 楽観的UI: ドラッグ中はサーバー応答を待たずローカル値を表示
+const optimisticPositionNs = ref<number | null>(null)
+
+const displayPosition = computed(() => {
+  if (optimisticPositionNs.value !== null) {
+    return Math.min(optimisticPositionNs.value, replayDuration.value)
+  }
+  return replayPosition.value
+})
+
+// ドラッグ終了後、次のAPIレスポンスが来たら楽観的値をリセット
+watch(
+  () => props.replayState.positionNs,
+  () => {
+    if (!isDragging.value) {
+      optimisticPositionNs.value = null
+    }
+  },
+)
+
+// シークのスロットリング（50ms間隔でAPIコールを抑制）
+const SEEK_THROTTLE_MS = 50
+let pendingSeekPosition: number | null = null
+let seekThrottleTimer: number | null = null
+
+function emitThrottledSeek(positionNs: number) {
+  pendingSeekPosition = positionNs
+  if (seekThrottleTimer !== null) return
+
+  emit('seek', positionNs)
+
+  seekThrottleTimer = window.setTimeout(() => {
+    seekThrottleTimer = null
+    if (pendingSeekPosition !== null) {
+      emit('seek', pendingSeekPosition)
+      pendingSeekPosition = null
+    }
+  }, SEEK_THROTTLE_MS)
+}
+
+function flushPendingSeek() {
+  if (seekThrottleTimer !== null) {
+    clearTimeout(seekThrottleTimer)
+    seekThrottleTimer = null
+  }
+  if (pendingSeekPosition !== null) {
+    emit('seek', pendingSeekPosition)
+    pendingSeekPosition = null
+  }
+}
+
+onBeforeUnmount(() => {
+  if (seekThrottleTimer !== null) {
+    clearTimeout(seekThrottleTimer)
+  }
+})
+
 function positionFromPointer(clientX: number): number {
   const el = timelineTrackRef.value
   if (!el || replayDuration.value <= 0) return 0
@@ -58,43 +116,43 @@ function positionFromPointer(clientX: number): number {
 function onTrackPointerDown(event: PointerEvent) {
   if (props.loading) return
   isDragging.value = true
+  emit('drag-state', true)
   ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
-  emit('seek', positionFromPointer(event.clientX))
+  const pos = positionFromPointer(event.clientX)
+  optimisticPositionNs.value = pos
+  emit('seek', pos)
 }
 
 function onTrackPointerMove(event: PointerEvent) {
   if (!isDragging.value) return
-  emit('seek', positionFromPointer(event.clientX))
+  const pos = positionFromPointer(event.clientX)
+  optimisticPositionNs.value = pos
+  emitThrottledSeek(pos)
 }
 
 function onTrackPointerUp(event: PointerEvent) {
   isDragging.value = false
+  emit('drag-state', false)
   ;(event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId)
+  flushPendingSeek()
 }
 
-function onTrackPointerCancel(event: PointerEvent) {
-  isDragging.value = false
-  ;(event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId)
-}
+const onTrackPointerCancel = onTrackPointerUp
 
 const progressPercent = computed(() => {
   if (replayDuration.value <= 0) return 0
-  return (replayPosition.value / replayDuration.value) * 100
+  return (displayPosition.value / replayDuration.value) * 100
 })
 </script>
 
 <template>
   <div class="replay-bar" :class="{ loading }">
-    <!-- ローディングオーバーレイ -->
-    <div v-if="loading" class="replay-loading-overlay" role="status" aria-live="polite">
-      <span class="spinner large" aria-hidden="true" />
-      <span class="overlay-text">ログファイルを読み込み中...</span>
-    </div>
-
     <!-- ファイル情報 -->
-    <div class="file-info">
+    <div class="file-info" role="status" :aria-live="loading ? 'polite' : 'off'">
       <span class="replay-badge">REPLAY</span>
-      <span v-if="replayState.fileName" class="file-name" :title="replayState.fileName">{{ replayState.fileName }}</span>
+      <span v-if="loading" class="spinner" aria-hidden="true" />
+      <span v-if="loading" class="loading-label">読み込み中...</span>
+      <span v-else-if="replayState.fileName" class="file-name" :title="replayState.fileName">{{ replayState.fileName }}</span>
     </div>
 
     <!-- トランスポートコントロール -->
@@ -147,7 +205,7 @@ const progressPercent = computed(() => {
         />
       </div>
       <div class="time-display">
-        <span class="current-time">{{ formatTimeNs(replayPosition) }}</span>
+        <span class="current-time">{{ formatTimeNs(displayPosition) }}</span>
         <span class="time-sep">/</span>
         <span>{{ formatTimeNs(replayDuration) }}</span>
       </div>
@@ -191,32 +249,19 @@ const progressPercent = computed(() => {
 }
 
 .replay-bar.loading .transport,
-.replay-bar.loading .timeline-section,
-.replay-bar.loading .rate-wrap,
-.replay-bar.loading .file-info {
-  opacity: 0.35;
+.replay-bar.loading .rate-wrap {
+  opacity: 0.45;
 }
 
-/* ローディングオーバーレイ */
-.replay-loading-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.7em;
-  background: rgba(5, 13, 24, 0.72);
-  border-top: 2px solid #4da0ff;
-  backdrop-filter: blur(2px);
+.loading-label {
+  font-size: 0.82em;
+  color: var(--accent);
+  animation: pulse 1.2s ease-in-out infinite;
 }
 
-.overlay-text {
-  font-size: 0.98em;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-  color: #d9ecff;
-  text-shadow: 0 0 8px rgba(77, 160, 255, 0.45);
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
 }
 
 /* ファイル情報 */
@@ -326,7 +371,15 @@ const progressPercent = computed(() => {
 
 .timeline-track.disabled {
   cursor: not-allowed;
-  opacity: 0.5;
+}
+
+.replay-bar.loading .timeline-track.disabled {
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 0.3; }
 }
 
 .timeline-progress {
@@ -429,11 +482,6 @@ const progressPercent = computed(() => {
   animation: spin 0.8s linear infinite;
 }
 
-.spinner.large {
-  width: 1.2em;
-  height: 1.2em;
-  border-width: 3px;
-}
 
 @keyframes spin {
   to { transform: rotate(360deg); }
