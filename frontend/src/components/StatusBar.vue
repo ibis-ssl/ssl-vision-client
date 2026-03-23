@@ -3,8 +3,9 @@ import type { Referee } from '@/proto/gc/ssl_gc_referee_message_pb.ts'
 import type { ReplayState } from '@/composables/replay.ts'
 import type { LayerVisibility } from '@/components/LayerControl.vue'
 import { useSettings } from '@/composables/settings'
+import { usePortStatus } from '@/composables/portStatus'
 import { formatTimeNs } from '@/utils/time'
-import { computed, inject, onMounted, onUnmounted, ref, type Ref } from 'vue'
+import { computed, inject, onMounted, onUnmounted, ref, watch, type Ref } from 'vue'
 
 interface Props {
   referee: Referee | null | undefined
@@ -30,10 +31,26 @@ interface Emits {
 
 const emit = defineEmits<Emits>()
 const { config, loading: settingsLoading, error, successMessage, fetchConfig, updateConfig } = useSettings()
+const { portStatus, isPortActive } = usePortStatus()
+
+const VISION_PORTS = [10006, 10020]
+const TRACKER_PORTS = [11010, 10010]
+const REFEREE_PORTS = [11003, 10003]
 
 const visionPort = ref(10006)
 const trackedPort = ref(10010)
 const refereePort = ref(10003)
+
+const autoSwitchMessage = ref<string | null>(null)
+let autoSwitchTimer: ReturnType<typeof setTimeout> | null = null
+
+function showAutoSwitchMessage(msg: string) {
+  autoSwitchMessage.value = msg
+  if (autoSwitchTimer) clearTimeout(autoSwitchTimer)
+  autoSwitchTimer = setTimeout(() => {
+    autoSwitchMessage.value = null
+  }, 5000)
+}
 const grSimAddress = ref('127.0.0.1')
 const grSimPort = ref(20011)
 const autoBallPlacementEnabled = ref(false)
@@ -150,6 +167,43 @@ async function onSaveConfig() {
   })
 }
 
+function tryAutoSwitch(
+  portRef: { value: number },
+  ports: number[],
+  statuses: { port: number; active: boolean }[],
+  serviceName: string,
+  messages: string[],
+): boolean {
+  const currentActive = statuses.find(s => s.port === portRef.value)?.active ?? false
+  if (currentActive) return false
+
+  const alternative = ports.find(p => p !== portRef.value)
+  if (alternative === undefined) return false
+
+  const altActive = statuses.find(s => s.port === alternative)?.active ?? false
+  if (!altActive) return false
+
+  portRef.value = alternative
+  messages.push(`${serviceName} ポートを ${alternative} に自動切替しました`)
+  return true
+}
+
+watch(portStatus, (newStatus) => {
+  if (!newStatus) return
+
+  const messages: string[] = []
+  const changed = [
+    tryAutoSwitch(visionPort, VISION_PORTS, newStatus.vision, 'Vision', messages),
+    tryAutoSwitch(trackedPort, TRACKER_PORTS, newStatus.tracker, 'Tracker', messages),
+    tryAutoSwitch(refereePort, REFEREE_PORTS, newStatus.referee, 'Referee', messages),
+  ].some(Boolean)
+
+  if (changed) {
+    onSaveConfig()
+    showAutoSwitchMessage(messages.join(' / '))
+  }
+})
+
 function onReplayFileSelected(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
@@ -195,11 +249,15 @@ onMounted(async () => {
 onUnmounted(() => {
   document.removeEventListener('mousedown', onDocumentPointerDown)
   document.removeEventListener('keydown', onDocumentKeyDown)
+  if (autoSwitchTimer) clearTimeout(autoSwitchTimer)
 })
 </script>
 
 <template>
   <div id="status-bar">
+    <div v-if="autoSwitchMessage" class="auto-switch-notification">
+      {{ autoSwitchMessage }}
+    </div>
     <div class="main-row">
       <div class="info-section connection-status">
         <span class="label">接続:</span>
@@ -282,18 +340,36 @@ onUnmounted(() => {
             <div class="settings-group settings-card settings-card-wide">
               <span class="settings-group-title">Network Endpoints</span>
               <div class="setting-field-grid">
-                <label class="setting-field-label">
+                <div class="setting-field-label">
                   <span>Vision Port</span>
-                  <input class="input-control" type="number" v-model.number="visionPort" min="1" max="65535" :disabled="settingsLoading" />
-                </label>
-                <label class="setting-field-label">
+                  <div class="port-radio-group">
+                    <label v-for="p in VISION_PORTS" :key="p" class="port-radio" :class="{ 'port-inactive': !isPortActive('vision', p) }">
+                      <input type="radio" v-model.number="visionPort" :value="p" :disabled="settingsLoading" />
+                      <span class="port-dot" :class="{ active: isPortActive('vision', p) }"></span>
+                      <span>{{ p }}</span>
+                    </label>
+                  </div>
+                </div>
+                <div class="setting-field-label">
                   <span>Tracked Port</span>
-                  <input class="input-control" type="number" v-model.number="trackedPort" min="1" max="65535" :disabled="settingsLoading" />
-                </label>
-                <label class="setting-field-label">
+                  <div class="port-radio-group">
+                    <label v-for="p in TRACKER_PORTS" :key="p" class="port-radio" :class="{ 'port-inactive': !isPortActive('tracker', p) }">
+                      <input type="radio" v-model.number="trackedPort" :value="p" :disabled="settingsLoading" />
+                      <span class="port-dot" :class="{ active: isPortActive('tracker', p) }"></span>
+                      <span>{{ p }}</span>
+                    </label>
+                  </div>
+                </div>
+                <div class="setting-field-label">
                   <span>Referee Port</span>
-                  <input class="input-control" type="number" v-model.number="refereePort" min="1" max="65535" :disabled="settingsLoading" />
-                </label>
+                  <div class="port-radio-group">
+                    <label v-for="p in REFEREE_PORTS" :key="p" class="port-radio" :class="{ 'port-inactive': !isPortActive('referee', p) }">
+                      <input type="radio" v-model.number="refereePort" :value="p" :disabled="settingsLoading" />
+                      <span class="port-dot" :class="{ active: isPortActive('referee', p) }"></span>
+                      <span>{{ p }}</span>
+                    </label>
+                  </div>
+                </div>
                 <label class="setting-field-label">
                   <span>grSim Address</span>
                   <input class="input-control" type="text" v-model="grSimAddress" :disabled="settingsLoading" />
@@ -685,6 +761,50 @@ onUnmounted(() => {
 .success-text {
   color: #66ff99;
   font-size: 0.85em;
+}
+
+.auto-switch-notification {
+  background: rgba(121, 192, 255, 0.12);
+  border: 1px solid #79c0ff;
+  border-radius: 6px;
+  padding: 0.3em 0.8em;
+  font-size: 0.82em;
+  color: #79c0ff;
+  text-align: center;
+}
+
+.port-radio-group {
+  display: flex;
+  gap: 0.8em;
+  flex-wrap: wrap;
+  margin-top: 0.2em;
+}
+
+.port-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  cursor: pointer;
+  font-size: 0.9em;
+  color: #d4e7ff;
+}
+
+.port-radio.port-inactive {
+  opacity: 0.4;
+}
+
+.port-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #444;
+  flex-shrink: 0;
+}
+
+.port-dot.active {
+  background: #44ff88;
+  box-shadow: 0 0 4px #44ff88;
 }
 
 @media (max-width: 900px) {

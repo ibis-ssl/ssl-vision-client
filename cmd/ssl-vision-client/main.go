@@ -6,6 +6,7 @@ import (
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/config"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/gc"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/grsim"
+	"github.com/RoboCup-SSL/ssl-vision-client/internal/portmonitor"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/replay"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/tracked"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/vision"
@@ -64,6 +65,15 @@ func setupServer(cfg *config.Config) *http.Server {
 		log.Printf("Warning: Failed to connect to grSim: %v", err)
 	}
 
+	// ポート監視モニターを初期化・起動
+	monitor := portmonitor.NewMonitor(
+		[]int{10006, 10020},
+		[]int{11010, 10010},
+		[]int{11003, 10003},
+		skipIfis,
+	)
+	monitor.Start()
+
 	// レシーバーマネージャーを初期化
 	manager := &ReceiverManager{
 		skipIfis:     skipIfis,
@@ -86,6 +96,7 @@ func setupServer(cfg *config.Config) *http.Server {
 		manager,
 		manager,
 		grSimSender,
+		monitor,
 	)
 	return &http.Server{
 		Addr:    *address,
