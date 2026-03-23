@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Referee } from '@/proto/gc/ssl_gc_referee_message_pb.ts'
-import type { SSL_DetectionFrame } from '@/proto/vision/ssl_vision_detection_pb.ts'
 
 const props = defineProps<{
   referee: Referee
-  detectionFrame: SSL_DetectionFrame | null
+  ballPosition: { x: number; y: number } | null
 }>()
 
 // ボールプレイスメントコマンドかチェック
@@ -22,25 +21,9 @@ const designatedPosition = computed(() => {
   }
 })
 
-// ボールの現在位置（最も信頼度の高いボールを使用）
-const ballPosition = computed(() => {
-  if (!props.detectionFrame?.balls || props.detectionFrame.balls.length === 0) {
-    return null
-  }
-  // 最も信頼度の高いボール（通常は最初のボール）
-  const ball = props.detectionFrame.balls[0]
-  if (!ball || ball.x === undefined || ball.y === undefined) {
-    return null
-  }
-  return {
-    x: ball.x / 1000, // mm to m
-    y: -ball.y / 1000, // y軸を反転
-  }
-})
-
 // カプセルを描画するかどうか
 const shouldDrawCapsule = computed(() => {
-  return isBallPlacement.value && designatedPosition.value && ballPosition.value
+  return isBallPlacement.value && designatedPosition.value && props.ballPosition
 })
 
 // チームカラー (16=YELLOW, 17=BLUE)

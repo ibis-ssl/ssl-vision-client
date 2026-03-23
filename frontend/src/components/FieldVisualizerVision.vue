@@ -38,6 +38,21 @@ const grsimConnected = ref(true)
 
 const showReplayBar = computed(() => replayState.value.mode === 'replay' || replay.loading.value)
 
+// visionとtrackerのどちらのソースからでもボール位置をSVG座標系（m単位・Y軸反転済み）で取得する
+const ballPosition = computed(() => {
+  if (detectionFrame.value?.balls?.length) {
+    const ball = detectionFrame.value.balls[0]
+    return { x: ball.x / 1000, y: -ball.y / 1000 }
+  }
+  if (trackedFrame.value?.balls?.length) {
+    const ball = trackedFrame.value.balls[0]
+    if (ball?.pos) {
+      return { x: ball.pos.x, y: -ball.pos.y }
+    }
+  }
+  return null
+})
+
 const svgVisionRef = ref<InstanceType<typeof SvgVision>>()
 
 // 選択状態をこのコンポーネントで管理し、配下全体でprovide
@@ -286,9 +301,9 @@ onUnmounted(() => {
           :referee="referee"
         />
         <SvgBallPlacement
-          v-if="referee && layerVisibility.referee && detectionFrame"
+          v-if="referee && layerVisibility.referee && ballPosition"
           :referee="referee"
-          :detection-frame="detectionFrame"
+          :ball-position="ballPosition"
         />
         <SvgGameEvents
           v-if="referee && layerVisibility.fouls"
