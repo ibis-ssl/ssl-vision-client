@@ -75,6 +75,23 @@ const foulInfo: Partial<Record<GameEvent_Type, { name: string; icon: string }>> 
   [GameEvent_Type.BOT_TOO_FAST_IN_STOP]:                 { name: 'ストップ中速度超過', icon: '⚠️' },
   [GameEvent_Type.DEFENDER_TOO_CLOSE_TO_KICK_POINT]:     { name: 'ボール接近', icon: '⚠️' },
   [GameEvent_Type.EXCESSIVE_BOT_SUBSTITUTION]:           { name: '交代回数超過', icon: '⚠️' },
+  // ゴール関連
+  [GameEvent_Type.POSSIBLE_GOAL]:                        { name: 'ゴール(確認中)', icon: '⚽' },
+  [GameEvent_Type.GOAL]:                                 { name: 'ゴール', icon: '⚽' },
+  [GameEvent_Type.INVALID_GOAL]:                         { name: '無効ゴール', icon: '❌' },
+  // PK・試合停滞
+  [GameEvent_Type.PENALTY_KICK_FAILED]:                  { name: 'PK失敗', icon: '❌' },
+  [GameEvent_Type.NO_PROGRESS_IN_GAME]:                  { name: '試合の停滞', icon: '⏸️' },
+  [GameEvent_Type.TOO_MANY_ROBOTS]:                      { name: 'ロボット数超過', icon: '🤖' },
+  // 非推奨イベント（locationあり）
+  [GameEvent_Type.INDIRECT_GOAL]:                        { name: '間接ゴール', icon: '⚽' },
+  [GameEvent_Type.CHIPPED_GOAL]:                         { name: 'チップゴール', icon: '⚽' },
+  [GameEvent_Type.KICK_TIMEOUT]:                         { name: 'キックTO', icon: '⏱️' },
+  [GameEvent_Type.ATTACKER_TOUCHED_OPPONENT_IN_DEFENSE_AREA]:         { name: 'エリア内接触', icon: '⚠️' },
+  [GameEvent_Type.ATTACKER_TOUCHED_OPPONENT_IN_DEFENSE_AREA_SKIPPED]: { name: 'エリア内接触 (スキップ)', icon: '⚠️' },
+  [GameEvent_Type.BOT_CRASH_UNIQUE_SKIPPED]:             { name: '衝突 (スキップ)', icon: '⚠️' },
+  [GameEvent_Type.BOT_PUSHED_BOT_SKIPPED]:               { name: 'プッシング (スキップ)', icon: '⚠️' },
+  [GameEvent_Type.DEFENDER_IN_DEFENSE_AREA_PARTIALLY]:   { name: '部分的エリア侵入', icon: '🛑' },
 }
 
 // チームカラーを取得
@@ -94,6 +111,14 @@ function getEventLocation(event: GameEvent): { x: number; y: number } | null {
     return {
       x: eventData.location.x ?? 0,
       y: -(eventData.location.y ?? 0), // Y軸を反転
+    }
+  }
+
+  // ballLocationフィールドへのフォールバック（tooManyRobots等）
+  if ('ballLocation' in eventData && eventData.ballLocation) {
+    return {
+      x: eventData.ballLocation.x ?? 0,
+      y: -(eventData.ballLocation.y ?? 0),
     }
   }
 
@@ -117,9 +142,8 @@ function getEventBot(event: GameEvent): number | undefined {
   if (!event.event || !event.event.value) return undefined
 
   const eventData = event.event.value
-  if ('byBot' in eventData) {
-    return eventData.byBot
-  }
+  if ('byBot' in eventData) return eventData.byBot
+  if ('kickingBot' in eventData) return eventData.kickingBot // ゴール系
 
   return undefined
 }
@@ -130,35 +154,44 @@ function getEventDetails(event: GameEvent): string | undefined {
 
   const eventData = event.event.value
 
-  // 速度超過系
   if ('initialBallSpeed' in eventData && eventData.initialBallSpeed !== undefined) {
     return `${eventData.initialBallSpeed.toFixed(1)}m/s`
   }
   if ('speed' in eventData && eventData.speed !== undefined) {
     return `${eventData.speed.toFixed(1)}m/s`
   }
-
-  // 距離系（既にメートル単位 [m]）
-  if ('distance' in eventData && eventData.distance !== undefined) {
-    return `${eventData.distance.toFixed(2)}m`
+  if ('crashSpeed' in eventData && eventData.crashSpeed !== undefined) {
+    return `${eventData.crashSpeed.toFixed(1)}m/s`
   }
-
-  // ドリブル距離（start/endは既にメートル単位 [m]）
-  if ('start' in eventData && 'end' in eventData && eventData.start && eventData.end) {
-    const dx = (eventData.end.x ?? 0) - (eventData.start.x ?? 0)
-    const dy = (eventData.end.y ?? 0) - (eventData.start.y ?? 0)
-    const dist = Math.sqrt(dx * dx + dy * dy)
-    return `${dist.toFixed(2)}m`
-  }
-
-  // 押し出し距離（既にメートル単位 [m]）
   if ('pushedDistance' in eventData && eventData.pushedDistance !== undefined) {
     return `${eventData.pushedDistance.toFixed(2)}m`
   }
-
-  // 衝突速度
-  if ('crashSpeed' in eventData && eventData.crashSpeed !== undefined) {
-    return `${eventData.crashSpeed.toFixed(1)}m/s`
+  if ('start' in eventData && 'end' in eventData && eventData.start && eventData.end) {
+    const dx = (eventData.end.x ?? 0) - (eventData.start.x ?? 0)
+    const dy = (eventData.end.y ?? 0) - (eventData.start.y ?? 0)
+    return `${Math.sqrt(dx * dx + dy * dy).toFixed(2)}m`
+  }
+  // distanceより先に判定: placementSucceededはdistanceも持つが配置時間を優先する
+  if ('timeTaken' in eventData && eventData.timeTaken !== undefined) {
+    const precision = 'precision' in eventData && eventData.precision !== undefined
+      ? ` 精度${eventData.precision.toFixed(3)}m`
+      : ''
+    return `${eventData.timeTaken.toFixed(1)}秒${precision}`
+  }
+  if ('distance' in eventData && eventData.distance !== undefined) {
+    return `${eventData.distance.toFixed(2)}m`
+  }
+  if ('maxBallHeight' in eventData && eventData.maxBallHeight !== undefined) {
+    return `高さ${eventData.maxBallHeight.toFixed(2)}m`
+  }
+  if ('time' in eventData && eventData.time !== undefined) {
+    return `${eventData.time.toFixed(1)}秒`
+  }
+  if ('remainingDistance' in eventData && eventData.remainingDistance !== undefined) {
+    return `残り${eventData.remainingDistance.toFixed(2)}m`
+  }
+  if ('numRobotsOnField' in eventData && eventData.numRobotsOnField !== undefined) {
+    return `${eventData.numRobotsOnField}/${eventData.numRobotsAllowed ?? '?'}台`
   }
 
   return undefined

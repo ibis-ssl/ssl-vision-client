@@ -83,6 +83,17 @@ export const GAME_EVENT_INFO: Record<string, GameEventInfo> = {
   emergencyStop:                     { label: '緊急停止',                       level: 'warning' },
   unsportingBehaviorMinor:           { label: '非スポーツマン行為 (軽微)',       level: 'warning' },
   unsportingBehaviorMajor:           { label: '非スポーツマン行為 (重大)',       level: 'error'   },
+  // 非推奨イベント（旧バージョン互換）
+  prepared:                                        { label: '準備完了',                       level: 'info'    },
+  indirectGoal:                                    { label: '間接ゴール',                     level: 'success' },
+  chippedGoal:                                     { label: 'チップゴール',                   level: 'success' },
+  kickTimeout:                                     { label: 'キックタイムアウト',             level: 'warning' },
+  attackerTouchedOpponentInDefenseArea:             { label: 'エリア内接触',                   level: 'warning' },
+  attackerTouchedOpponentInDefenseAreaSkipped:      { label: 'エリア内接触 (スキップ)',        level: 'info'    },
+  botCrashUniqueSkipped:                           { label: '衝突 (スキップ)',                level: 'info'    },
+  botPushedBotSkipped:                             { label: 'プッシング (スキップ)',          level: 'info'    },
+  defenderInDefenseAreaPartially:                  { label: '部分的エリア侵入',               level: 'warning' },
+  multiplePlacementFailures:                       { label: 'ボール配置連続失敗',             level: 'warning' },
 }
 
 // Team enum: UNKNOWN=0, YELLOW=1, BLUE=2
