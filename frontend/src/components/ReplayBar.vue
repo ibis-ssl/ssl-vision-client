@@ -227,23 +227,16 @@ const progressPercent = computed(() => {
 
 <style scoped>
 .replay-bar {
-  --bg-deep: rgba(8, 14, 22, 0.96);
-  --bg-soft: rgba(18, 28, 42, 0.96);
-  --line: #2b3d55;
-  --line-strong: #4d6f98;
-  --text-muted: #9bb3cf;
-  --accent: #79c0ff;
-
   position: relative;
   display: grid;
   grid-template-columns: auto auto 1fr auto;
   align-items: center;
   gap: 1em;
-  padding: 0.55em 1em;
-  background: linear-gradient(180deg, var(--bg-soft), var(--bg-deep));
-  border-top: 2px solid rgba(121, 192, 255, 0.3);
-  font-family: monospace;
-  color: white;
+  padding: 0.6em 1em;
+  background: var(--md-sys-color-surface-container);
+  backdrop-filter: var(--app-glass-blur);
+  border-top: 1px solid var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-surface);
   width: 100%;
   box-sizing: border-box;
 }
@@ -255,7 +248,7 @@ const progressPercent = computed(() => {
 
 .loading-label {
   font-size: 0.82em;
-  color: var(--accent);
+  color: var(--md-sys-color-primary);
   animation: pulse 1.2s ease-in-out infinite;
 }
 
@@ -264,7 +257,6 @@ const progressPercent = computed(() => {
   50% { opacity: 0.45; }
 }
 
-/* ファイル情報 */
 .file-info {
   display: flex;
   align-items: center;
@@ -274,42 +266,42 @@ const progressPercent = computed(() => {
 }
 
 .replay-badge {
-  font-size: 0.72em;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  color: #79c0ff;
-  border: 1px solid rgba(121, 192, 255, 0.45);
-  border-radius: 999px;
-  padding: 0.15em 0.55em;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--md-sys-color-on-secondary-container);
+  background: var(--md-sys-color-secondary-container);
+  border-radius: var(--md-sys-shape-corner-full);
+  padding: 0.2em 0.65em;
   flex-shrink: 0;
+  text-transform: uppercase;
 }
 
 .file-name {
   font-size: 0.82em;
-  color: var(--text-muted);
+  color: var(--md-sys-color-on-surface-variant);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* トランスポート */
 .transport {
   display: flex;
   align-items: center;
-  gap: 0.35em;
+  gap: 0.4em;
 }
 
 .icon-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(12, 20, 32, 0.95);
-  border: 1px solid var(--line-strong);
+  background: var(--md-sys-color-surface-container-high);
+  border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: 50%;
-  color: #d7e7fb;
+  color: var(--md-sys-color-on-surface);
   cursor: pointer;
   padding: 0;
-  transition: filter 0.15s, background 0.15s;
+  transition: background var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
   flex-shrink: 0;
 }
 
@@ -328,8 +320,9 @@ const progressPercent = computed(() => {
   width: 40px;
   height: 40px;
   min-width: 40px;
-  background: linear-gradient(180deg, #2a89ff, #1f6fd1);
-  border-color: #4da0ff;
+  background: var(--md-sys-color-primary-container);
+  border-color: transparent;
+  color: var(--md-sys-color-on-primary-container);
 }
 
 .icon-btn.play-pause svg {
@@ -338,15 +331,19 @@ const progressPercent = computed(() => {
 }
 
 .icon-btn:hover:not(:disabled) {
-  filter: brightness(1.2);
+  background: var(--md-sys-color-surface-container-highest);
+}
+
+.icon-btn.play-pause:hover:not(:disabled) {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
 }
 
 .icon-btn:disabled {
-  opacity: 0.45;
+  opacity: 0.38;
   cursor: not-allowed;
 }
 
-/* タイムライン */
 .timeline-section {
   display: flex;
   flex-direction: column;
@@ -357,11 +354,11 @@ const progressPercent = computed(() => {
 .timeline-track {
   position: relative;
   height: 4px;
-  background: rgba(30, 48, 72, 0.9);
-  border-radius: 999px;
+  background: var(--md-sys-color-surface-container-highest);
+  border-radius: var(--md-sys-shape-corner-full);
   cursor: pointer;
-  transition: height 0.15s;
-  margin: 8px 0;
+  transition: height var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+  margin: 10px 0;
 }
 
 .timeline-track:hover:not(.disabled),
@@ -387,8 +384,8 @@ const progressPercent = computed(() => {
   top: 0;
   left: 0;
   height: 100%;
-  background: linear-gradient(90deg, #2a89ff, var(--accent));
-  border-radius: 999px;
+  background: var(--md-sys-color-primary);
+  border-radius: var(--md-sys-shape-corner-full);
   pointer-events: none;
 }
 
@@ -397,12 +394,14 @@ const progressPercent = computed(() => {
   top: 50%;
   width: 12px;
   height: 12px;
-  background: #fff;
-  border: 2px solid var(--accent);
+  background: var(--md-sys-color-primary);
+  border: 2px solid var(--md-sys-color-on-primary-container);
   border-radius: 50%;
   transform: translate(-50%, -50%);
   pointer-events: none;
-  transition: width 0.15s, height 0.15s;
+  transition: width var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard),
+              height var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+  box-shadow: var(--md-sys-elevation-1);
 }
 
 .timeline-track:hover:not(.disabled) .timeline-thumb,
@@ -416,10 +415,11 @@ const progressPercent = computed(() => {
   top: 50%;
   width: 2px;
   height: 10px;
-  background: #ffd700;
+  background: var(--app-color-warning);
   transform: translate(-1px, -50%);
   pointer-events: none;
   border-radius: 1px;
+  opacity: 0.8;
 }
 
 .time-display {
@@ -427,67 +427,68 @@ const progressPercent = computed(() => {
   align-items: center;
   gap: 0.25em;
   font-size: 0.82em;
-  color: var(--text-muted);
+  font-family: var(--md-sys-typescale-mono-font);
+  color: var(--md-sys-color-on-surface-variant);
   font-variant-numeric: tabular-nums;
 }
 
 .current-time {
-  color: #9ad0ff;
+  color: var(--md-sys-color-primary);
   font-weight: 700;
 }
 
 .time-sep {
-  color: #7f99b9;
+  color: var(--md-sys-color-outline);
 }
 
-/* レート */
 .rate-wrap {
   display: inline-flex;
   align-items: center;
   gap: 0.45em;
-  color: var(--text-muted);
+  color: var(--md-sys-color-on-surface-variant);
   font-size: 0.82em;
-  padding: 0.22em 0.35em 0.22em 0.5em;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(12, 20, 32, 0.8);
+  padding: 0.25em 0.4em 0.25em 0.6em;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-low);
 }
 
 .rate-label {
   flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
 }
 
 .rate-select {
-  border: 1px solid var(--line-strong);
-  background: rgba(10, 14, 18, 0.92);
-  color: white;
-  border-radius: 999px;
-  padding: 0.22em 0.45em;
-  font-family: monospace;
+  border: none;
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  border-radius: var(--md-sys-shape-corner-full);
+  padding: 0.1em 0.3em;
+  font-family: var(--md-sys-typescale-mono-font);
+  font-size: 0.85em;
   cursor: pointer;
 }
 
 .rate-select:disabled {
-  opacity: 0.5;
+  opacity: 0.38;
   cursor: not-allowed;
 }
 
-/* スピナー */
 .spinner {
   width: 0.9em;
   height: 0.9em;
-  border: 2px solid rgba(184, 218, 255, 0.35);
-  border-top-color: #b8daff;
+  border: 2px solid var(--md-sys-color-primary-tint);
+  border-top-color: var(--md-sys-color-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
-
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-/* レスポンシブ */
 @media (max-width: 900px) {
   .replay-bar {
     grid-template-columns: 1fr;

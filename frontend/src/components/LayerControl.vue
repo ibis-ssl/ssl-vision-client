@@ -64,8 +64,10 @@ const toggleLayer = (layerName: keyof LayerVisibility) => {
   align-items: center;
   gap: 1em;
   padding: 0.5em 1em;
-  background-color: rgba(0, 0, 0, 0.7);
-  color: white;
+  background: var(--md-sys-color-surface-container);
+  backdrop-filter: var(--app-glass-blur);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-on-surface);
   width: 100%;
   position: absolute;
   top: 0;
@@ -74,23 +76,26 @@ const toggleLayer = (layerName: keyof LayerVisibility) => {
 }
 
 .control-label {
-  font-weight: bold;
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--md-sys-color-on-surface-variant);
   margin-right: 0.5em;
 }
 
 .layer-item {
   display: flex;
   align-items: center;
-  gap: 0.3em;
+  gap: 0.35em;
   cursor: pointer;
   user-select: none;
 }
 
 .layer-item input[type="checkbox"] {
+  accent-color: var(--md-sys-color-primary);
   cursor: pointer;
 }
 
 .layer-item span {
-  font-size: 0.9em;
+  font-size: 0.875rem;
 }
 </style>

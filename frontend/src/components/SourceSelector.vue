@@ -36,5 +36,11 @@ const updateActiveSource = (sourceId: string) => {
   width: 100%;
   bottom: 0.1em;
   position: absolute;
+  font-family: var(--md-sys-typescale-body-font);
+  color: var(--md-sys-color-on-surface);
+}
+
+#source-selector input[type="radio"] {
+  accent-color: var(--md-sys-color-primary);
 }
 </style>

@@ -20,11 +20,12 @@ defineProps<{ visible: boolean }>()
   display: inline-flex;
   align-items: center;
   gap: 0.45em;
-  padding: 0.3em 0.75em 0.3em 0.55em;
-  border-radius: 999px;
-  background: rgba(200, 30, 30, 0.85);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 100, 100, 0.5);
+  padding: 0.35em 0.85em 0.35em 0.65em;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-error-container);
+  backdrop-filter: var(--app-glass-blur);
+  border: 1px solid var(--app-glass-border);
+  box-shadow: var(--md-sys-elevation-2);
   pointer-events: none;
   user-select: none;
 }
@@ -33,28 +34,27 @@ defineProps<{ visible: boolean }>()
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--md-sys-color-on-error-container);
   animation: pulse 1.4s ease-in-out infinite;
   flex-shrink: 0;
 }
 
 .label {
-  font-family: monospace;
-  font-size: 0.78em;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--md-sys-color-on-error-container);
   text-transform: uppercase;
 }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.25; }
+  50% { opacity: 0.3; }
 }
 
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.25s ease;
+  transition: opacity var(--md-sys-motion-duration-medium) var(--md-sys-motion-easing-standard);
 }
 
 .fade-enter-from,
