@@ -41,6 +41,10 @@
   --md-sys-color-surface-container-high: #282A2F;
   --md-sys-color-surface-container-highest: #33353A;
 
+  /* Inverse Surface (used for tooltips) */
+  --md-sys-color-inverse-surface: #E3E2E6;
+  --md-sys-color-inverse-on-surface: #2F3033;
+
   /* Outline */
   --md-sys-color-outline: #8E9099;
   --md-sys-color-outline-variant: #44474F;
