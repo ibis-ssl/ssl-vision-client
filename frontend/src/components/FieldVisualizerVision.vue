@@ -20,7 +20,9 @@ import { useReferee } from '@/composables/referee.ts'
 import { useReplay } from '@/composables/replay.ts'
 import { useGrSimReplacement } from '@/composables/grsim'
 import { useSettings } from '@/composables/settings'
+import { useToast } from '@/composables/toast'
 import { Referee_Command } from '@/proto/gc/ssl_gc_referee_message_pb'
+import { REFEREE_COMMAND_LABELS, GAME_EVENT_INFO, teamLabel, isUrgentCommand } from '@/utils/referee'
 
 const activeSource = ref('vision')
 const { field } = useVisionGeometry()
@@ -32,6 +34,7 @@ const replay = useReplay()
 const replayState = replay.state
 const { replaceBall } = useGrSimReplacement()
 const { config } = useSettings()
+const { addToast } = useToast()
 
 // grSim接続状態（将来の実装用に常にtrueと想定）
 const grsimConnected = ref(true)
@@ -163,6 +166,56 @@ watch(
     }
   },
   { immediate: true }
+)
+
+watch(
+  () => referee.value?.commandCounter,
+  (newCounter, oldCounter) => {
+    if (oldCounter === undefined || newCounter === undefined) return
+    if (replayState.value.mode !== 'live') return
+    const currentReferee = referee.value
+    if (!currentReferee) return
+    const cmd = currentReferee.command
+    const label = REFEREE_COMMAND_LABELS[cmd] ?? `COMMAND_${cmd}`
+    addToast({
+      category: 'referee',
+      level: isUrgentCommand(cmd) ? 'warning' : 'info',
+      title: label,
+      duration: 3000,
+    })
+  }
+)
+
+const seenGameEventIds = new Set<string>()
+
+watch(
+  () => referee.value?.gameEvents,
+  (gameEvents) => {
+    if (!gameEvents || replayState.value.mode !== 'live') return
+    for (const event of gameEvents) {
+      const eventId = event.id || `${event.createdTimestamp}`
+      if (seenGameEventIds.has(eventId)) continue
+      seenGameEventIds.add(eventId)
+
+      const eventCase = event.event?.case
+      if (!eventCase) continue
+
+      const info = GAME_EVENT_INFO[eventCase]
+      const label = info?.label ?? eventCase
+
+      const eventData = event.event?.value as Record<string, unknown> | undefined
+      const team = typeof eventData?.byTeam === 'number' ? teamLabel(eventData.byTeam) : ''
+      const bot = typeof eventData?.byBot === 'number' ? `#${eventData.byBot}` : ''
+      const suffix = [team, bot].filter(Boolean).join(' ')
+
+      addToast({
+        category: 'autoref',
+        level: info?.level ?? 'info',
+        title: suffix ? `${label} (${suffix})` : label,
+        duration: 5000,
+      })
+    }
+  }
 )
 
 async function onModeUpdate(mode: 'live' | 'replay') {

@@ -4,7 +4,10 @@ import type { ReplayState } from '@/composables/replay.ts'
 import type { LayerVisibility } from '@/components/LayerControl.vue'
 import { useSettings } from '@/composables/settings'
 import { usePortStatus } from '@/composables/portStatus'
+import { useToast, type ToastCategory } from '@/composables/toast'
+import { useNotificationSettings } from '@/composables/notificationSettings'
 import { formatTimeNs } from '@/utils/time'
+import { REFEREE_COMMAND_LABELS } from '@/utils/referee'
 import { computed, inject, onMounted, onUnmounted, ref, watch, type Ref } from 'vue'
 
 interface Props {
@@ -32,6 +35,8 @@ interface Emits {
 const emit = defineEmits<Emits>()
 const { config, loading: settingsLoading, error, successMessage, fetchConfig, updateConfig } = useSettings()
 const { portStatus, isPortActive } = usePortStatus()
+const { addToast } = useToast()
+const { settings: notifSettings, requestSystemPermission } = useNotificationSettings()
 
 const VISION_PORTS = [10006, 10020]
 const TRACKER_PORTS = [11010, 10010]
@@ -41,15 +46,17 @@ const visionPort = ref(10006)
 const trackedPort = ref(10010)
 const refereePort = ref(10003)
 
-const autoSwitchMessage = ref<string | null>(null)
-let autoSwitchTimer: ReturnType<typeof setTimeout> | null = null
+const NOTIFICATION_CATEGORY_LABELS: Record<ToastCategory, string> = {
+  referee: 'Referee Commands',
+  autoref: 'Autoref Game Events',
+  system: 'System Events',
+  settings: 'Settings Feedback',
+}
 
-function showAutoSwitchMessage(msg: string) {
-  autoSwitchMessage.value = msg
-  if (autoSwitchTimer) clearTimeout(autoSwitchTimer)
-  autoSwitchTimer = setTimeout(() => {
-    autoSwitchMessage.value = null
-  }, 5000)
+async function onSystemNotifyToggle(category: ToastCategory): Promise<void> {
+  if (notifSettings.value.categories[category].systemNotification) {
+    await requestSystemPermission(category)
+  }
 }
 const grSimAddress = ref('127.0.0.1')
 const grSimPort = ref(20011)
@@ -90,27 +97,7 @@ const stageText = computed(() => {
 
 const commandText = computed(() => {
   if (!props.referee) return '--'
-  const commandMap: { [key: number]: string } = {
-    0: 'HALT',
-    1: 'STOP',
-    2: 'NORMAL_START',
-    3: 'FORCE_START',
-    4: 'PREPARE_KICKOFF_YELLOW',
-    5: 'PREPARE_KICKOFF_BLUE',
-    6: 'PREPARE_PENALTY_YELLOW',
-    7: 'PREPARE_PENALTY_BLUE',
-    8: 'DIRECT_FREE_YELLOW',
-    9: 'DIRECT_FREE_BLUE',
-    10: 'INDIRECT_FREE_YELLOW',
-    11: 'INDIRECT_FREE_BLUE',
-    12: 'TIMEOUT_YELLOW',
-    13: 'TIMEOUT_BLUE',
-    14: 'GOAL_YELLOW',
-    15: 'GOAL_BLUE',
-    16: 'BALL_PLACEMENT_YELLOW',
-    17: 'BALL_PLACEMENT_BLUE',
-  }
-  return commandMap[props.referee.command] || `COMMAND_${props.referee.command}`
+  return REFEREE_COMMAND_LABELS[props.referee.command] || `COMMAND_${props.referee.command}`
 })
 
 const timeText = computed(() => {
@@ -165,6 +152,11 @@ async function onSaveConfig() {
     autoBallPlacementEnabled: autoBallPlacementEnabled.value,
     autoCenterAfterGoalEnabled: autoCenterAfterGoalEnabled.value,
   })
+  if (successMessage.value) {
+    addToast({ category: 'settings', level: 'success', title: successMessage.value, duration: 3000 })
+  } else if (error.value) {
+    addToast({ category: 'settings', level: 'error', title: error.value, duration: 5000 })
+  }
 }
 
 function tryAutoSwitch(
@@ -200,7 +192,13 @@ watch(portStatus, (newStatus) => {
 
   if (changed) {
     onSaveConfig()
-    showAutoSwitchMessage(messages.join(' / '))
+    addToast({
+      category: 'system',
+      level: 'info',
+      title: 'ポート自動切替',
+      message: messages.join(' / '),
+      duration: 5000,
+    })
   }
 })
 
@@ -249,15 +247,11 @@ onMounted(async () => {
 onUnmounted(() => {
   document.removeEventListener('mousedown', onDocumentPointerDown)
   document.removeEventListener('keydown', onDocumentKeyDown)
-  if (autoSwitchTimer) clearTimeout(autoSwitchTimer)
 })
 </script>
 
 <template>
   <div id="status-bar">
-    <div v-if="autoSwitchMessage" class="auto-switch-notification">
-      {{ autoSwitchMessage }}
-    </div>
     <div class="main-row">
       <div class="info-section connection-status">
         <span class="label">接続:</span>
@@ -399,6 +393,43 @@ onUnmounted(() => {
               </div>
               <div v-if="error" class="error-text">{{ error }}</div>
               <div v-else-if="successMessage" class="success-text">{{ successMessage }}</div>
+            </div>
+
+            <div class="settings-group settings-card">
+              <span class="settings-group-title">Notifications</span>
+              <div class="settings-toggle-list">
+                <label class="settings-toggle-item">
+                  <input type="checkbox" v-model="notifSettings.globalEnabled" />
+                  <span>Enable All</span>
+                </label>
+              </div>
+              <span class="settings-group-title notif-sub-title">Per Category</span>
+              <div class="settings-toggle-list">
+                <label
+                  v-for="(cfg, key) in notifSettings.categories"
+                  :key="key"
+                  class="settings-toggle-item"
+                >
+                  <input type="checkbox" v-model="cfg.enabled" :disabled="!notifSettings.globalEnabled" />
+                  <span>{{ NOTIFICATION_CATEGORY_LABELS[key] ?? key }}</span>
+                </label>
+              </div>
+              <span class="settings-group-title notif-sub-title">System Notifications</span>
+              <div class="settings-toggle-list">
+                <label
+                  v-for="(cfg, key) in notifSettings.categories"
+                  :key="key"
+                  class="settings-toggle-item"
+                >
+                  <input
+                    type="checkbox"
+                    v-model="cfg.systemNotification"
+                    :disabled="!notifSettings.globalEnabled || !cfg.enabled"
+                    @change="onSystemNotifyToggle(key as ToastCategory)"
+                  />
+                  <span>{{ NOTIFICATION_CATEGORY_LABELS[key] ?? key }}</span>
+                </label>
+              </div>
             </div>
           </div>
         </div>
@@ -686,6 +717,11 @@ onUnmounted(() => {
   color: #79d0aa;
 }
 
+.notif-sub-title {
+  margin-top: 0.5em;
+  color: #79d0aa;
+}
+
 .settings-toggle-list {
   display: grid;
   gap: 0.45em;
@@ -772,16 +808,6 @@ onUnmounted(() => {
 .success-text {
   color: #66ff99;
   font-size: 0.85em;
-}
-
-.auto-switch-notification {
-  background: rgba(121, 192, 255, 0.12);
-  border: 1px solid #79c0ff;
-  border-radius: 6px;
-  padding: 0.3em 0.8em;
-  font-size: 0.82em;
-  color: #79c0ff;
-  text-align: center;
 }
 
 .port-radio-group {
