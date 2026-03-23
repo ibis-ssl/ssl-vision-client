@@ -6,6 +6,7 @@ import { computed, inject, onMounted, onUnmounted, ref, type Ref } from 'vue'
 
 const props = defineProps<{
   gameEvents: GameEvent[]
+  currentTimeMs?: number
 }>()
 
 // フィールド回転の状態を取得
@@ -40,10 +41,11 @@ onUnmounted(() => {
 
 // 表示すべきイベントをフィルタリング
 const visibleEvents = computed(() => {
+  const currentTime = props.currentTimeMs ?? now.value
   return props.gameEvents.filter((event) => {
     if (!event.createdTimestamp) return false
     const eventTime = Number(event.createdTimestamp) / 1000 // マイクロ秒からミリ秒へ
-    const elapsed = now.value - eventTime
+    const elapsed = currentTime - eventTime
     return elapsed >= 0 && elapsed < DISPLAY_DURATION
   })
 })
@@ -200,8 +202,9 @@ function getEventDetails(event: GameEvent): string | undefined {
 // フェードアウト用の透明度を計算
 function getOpacity(event: GameEvent): number {
   if (!event.createdTimestamp) return 1
+  const currentTime = props.currentTimeMs ?? now.value
   const eventTime = Number(event.createdTimestamp) / 1000
-  const elapsed = now.value - eventTime
+  const elapsed = currentTime - eventTime
   const remaining = DISPLAY_DURATION - elapsed
 
   // 最後の1秒でフェードアウト

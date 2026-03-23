@@ -41,6 +41,11 @@ const grsimConnected = ref(true)
 
 const showReplayBar = computed(() => replayState.value.mode === 'replay' || replay.loading.value)
 
+// リプレイ時のゲームイベント表示用現在時刻（ナノ秒→ミリ秒変換）
+const replayCurrentTimeMs = computed(() =>
+  replayState.value.mode === 'replay' ? replayState.value.positionNs / 1_000_000 : undefined
+)
+
 // visionとtrackerのどちらのソースからでもボール位置をSVG座標系（m単位・Y軸反転済み）で取得する
 const ballPosition = computed(() => {
   if (detectionFrame.value?.balls?.length) {
@@ -172,7 +177,6 @@ watch(
   () => referee.value?.commandCounter,
   (newCounter, oldCounter) => {
     if (oldCounter === undefined || newCounter === undefined) return
-    if (replayState.value.mode !== 'live') return
     const currentReferee = referee.value
     if (!currentReferee) return
     const cmd = currentReferee.command
@@ -188,10 +192,22 @@ watch(
 
 const seenGameEventIds = new Set<string>()
 
+// リプレイのシーク検出: 2秒以上位置が変化した場合にtostIDをリセット
+watch(
+  () => replayState.value.positionNs,
+  (newPos, oldPos) => {
+    if (oldPos === undefined) return
+    const SEEK_THRESHOLD_NS = 2_000_000_000
+    if (Math.abs(newPos - oldPos) > SEEK_THRESHOLD_NS) {
+      seenGameEventIds.clear()
+    }
+  }
+)
+
 watch(
   () => referee.value?.gameEvents,
   (gameEvents) => {
-    if (!gameEvents || replayState.value.mode !== 'live') return
+    if (!gameEvents) return
     for (const event of gameEvents) {
       const eventId = event.id || `${event.createdTimestamp}`
       if (seenGameEventIds.has(eventId)) continue
@@ -364,6 +380,7 @@ onUnmounted(() => {
         <SvgGameEvents
           v-if="referee && layerVisibility.fouls"
           :game-events="referee.gameEvents"
+          :current-time-ms="replayCurrentTimeMs"
         />
         <SvgTracked
           v-if="trackedFrame"
