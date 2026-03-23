@@ -4,6 +4,9 @@ export interface LayerVisibility {
   referee: boolean
   fieldLines: boolean
   fouls: boolean
+  velocity: boolean
+  kickedBall: boolean
+  trackerVisibility: boolean
 }
 
 const layers = defineModel<LayerVisibility>({ required: true })

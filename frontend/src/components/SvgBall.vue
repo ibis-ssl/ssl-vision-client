@@ -6,6 +6,7 @@ const props = defineProps<{
   y: number
   height: number
   draggable?: boolean
+  visibility?: number
 }>()
 
 const selectedObject = inject<Ref<{
@@ -25,7 +26,7 @@ const isSelected = computed(() => {
 const style = computed((): CSSProperties => {
   return {
     fill: 'orange',
-    fillOpacity: 1,
+    fillOpacity: Math.max(props.visibility ?? 1, 0.15),
   }
 })
 const highlightStyle = computed((): CSSProperties => {

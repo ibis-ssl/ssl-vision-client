@@ -9,6 +9,8 @@ const props = defineProps<{
   id: number
   teamColor: 'YELLOW' | 'BLUE'
   draggable?: boolean
+  visibility?: number
+  isKicker?: boolean
 }>()
 
 const selectedObject = inject<Ref<{
@@ -47,11 +49,13 @@ const isSelected = computed(() => {
 })
 
 const style = computed(() => {
+  const opacity = Math.max(props.visibility ?? 1, 0.15)
   return {
     stroke: 'black',
     strokeWidth: 0.005,
-    strokeOpacity: 1,
+    strokeOpacity: opacity,
     fill: props.teamColor == 'YELLOW' ? 'yellow' : 'blue',
+    fillOpacity: opacity,
     cursor: props.draggable ? 'pointer' : 'default',
   }
 })
@@ -86,6 +90,17 @@ function onClick(event: MouseEvent) {
       :cy="-y"
       :r="radius * 1.3"
       :style="highlightStyle"
+    />
+    <!-- キッカーハイライト -->
+    <circle
+      v-if="isKicker"
+      :cx="x"
+      :cy="-y"
+      :r="radius * 1.5"
+      stroke="red"
+      :stroke-width="0.008"
+      stroke-dasharray="0.02 0.01"
+      fill="none"
     />
     <svg-text :x="x" :y="y" :text="robotId" :color="teamColor == 'YELLOW' ? 'black' : 'white'" />
   </g>

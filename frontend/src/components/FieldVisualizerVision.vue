@@ -80,6 +80,9 @@ const layerVisibility = ref<LayerVisibility>({
   referee: true,
   fieldLines: true,
   fouls: true,
+  velocity: true,
+  kickedBall: true,
+  trackerVisibility: true,
 })
 
 const lastAutoPlacementCommandCounter = ref<number | null>(null)
@@ -309,7 +312,13 @@ onUnmounted(() => {
           v-if="referee && layerVisibility.fouls"
           :game-events="referee.gameEvents"
         />
-        <SvgTracked v-if="trackedFrame" :tracked-frame="trackedFrame" />
+        <SvgTracked
+          v-if="trackedFrame"
+          :tracked-frame="trackedFrame"
+          :show-velocity="layerVisibility.velocity"
+          :show-kicked-ball="layerVisibility.kickedBall"
+          :show-visibility="layerVisibility.trackerVisibility"
+        />
       </FieldVisualizer>
       <ReplayModeIndicator :visible="replayState.mode === 'replay'" />
     </div>

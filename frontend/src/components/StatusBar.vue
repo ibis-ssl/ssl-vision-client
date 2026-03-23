@@ -317,6 +317,12 @@ onUnmounted(() => {
                 <label class="settings-toggle-item"><input type="checkbox" :checked="props.layerVisibility.fieldLines" @change="emit('toggle-layer', 'fieldLines')" /><span>Field</span></label>
                 <label class="settings-toggle-item"><input type="checkbox" :checked="props.layerVisibility.fouls" @change="emit('toggle-layer', 'fouls')" /><span>Fouls</span></label>
               </div>
+              <span class="settings-group-title tracker-overlay-title">Tracker Overlay</span>
+              <div class="settings-toggle-list">
+                <label class="settings-toggle-item"><input type="checkbox" :checked="props.layerVisibility.velocity" @change="emit('toggle-layer', 'velocity')" /><span>Velocity</span></label>
+                <label class="settings-toggle-item"><input type="checkbox" :checked="props.layerVisibility.kickedBall" @change="emit('toggle-layer', 'kickedBall')" /><span>Kicked Ball</span></label>
+                <label class="settings-toggle-item"><input type="checkbox" :checked="props.layerVisibility.trackerVisibility" @change="emit('toggle-layer', 'trackerVisibility')" /><span>Visibility Opacity</span></label>
+              </div>
             </div>
 
             <div class="settings-group settings-card">
@@ -673,6 +679,11 @@ onUnmounted(() => {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   margin: 0;
+}
+
+.tracker-overlay-title {
+  margin-top: 0.5em;
+  color: #79d0aa;
 }
 
 .settings-toggle-list {
