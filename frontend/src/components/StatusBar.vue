@@ -80,7 +80,7 @@ const grSimAddress = ref('127.0.0.1')
 const grSimPort = ref(20011)
 const autoBallPlacementEnabled = ref(false)
 const autoCenterAfterGoalEnabled = ref(false)
-const settingsDrawerRef = ref<HTMLDetailsElement | null>(null)
+const isSettingsOpen = ref(false)
 
 const selectedObject = inject<Ref<{
   type: 'robot' | 'ball'
@@ -209,6 +209,7 @@ function onReplayFileSelected(event: Event) {
   const file = input.files?.[0]
   if (file) {
     emit('replay-file-selected', file)
+    closeSettingsDrawer()
   }
 }
 
@@ -218,19 +219,16 @@ function onReplayPathLoad() {
   const path = replayServerPath.value.trim()
   if (path) {
     emit('replay-path-selected', path)
+    closeSettingsDrawer()
   }
 }
 
 function closeSettingsDrawer() {
-  settingsDrawerRef.value?.removeAttribute('open')
+  isSettingsOpen.value = false
 }
 
-function onDocumentPointerDown(event: MouseEvent) {
-  const drawer = settingsDrawerRef.value
-  if (!drawer?.open) return
-  const target = event.target as Node | null
-  if (target && drawer.contains(target)) return
-  closeSettingsDrawer()
+function toggleSettings() {
+  isSettingsOpen.value = !isSettingsOpen.value
 }
 
 function onDocumentKeyDown(event: KeyboardEvent) {
@@ -240,14 +238,12 @@ function onDocumentKeyDown(event: KeyboardEvent) {
 }
 
 onMounted(async () => {
-  document.addEventListener('mousedown', onDocumentPointerDown)
   document.addEventListener('keydown', onDocumentKeyDown)
   await fetchConfig()
   syncInputsFromConfig()
 })
 
 onUnmounted(() => {
-  document.removeEventListener('mousedown', onDocumentPointerDown)
   document.removeEventListener('keydown', onDocumentKeyDown)
 })
 </script>
@@ -295,150 +291,180 @@ onUnmounted(() => {
         <span class="value selection-text" :class="{ selected: selectedObject }">{{ selectedText }}</span>
       </div>
 
-      <details ref="settingsDrawerRef" class="settings-drawer">
-        <summary>
-          <span class="settings-summary-title">Settings</span>
-        </summary>
-        <div class="settings-panel">
-          <header class="settings-panel-header">
-            <h3 class="settings-panel-title">Runtime Controls</h3>
-            <p class="settings-panel-subtitle">Tune visualization, replay, and network endpoints.</p>
-          </header>
-          <div class="settings-content settings-overview">
-            <div class="settings-group settings-card">
-              <span class="settings-group-title">Layer Visibility</span>
-              <div class="settings-toggle-list">
-                <label class="settings-toggle-item"><input type="checkbox" :checked="props.layerVisibility.ball" @change="emit('toggle-layer', 'ball')" /><span>Ball</span></label>
-                <label class="settings-toggle-item"><input type="checkbox" :checked="props.layerVisibility.referee" @change="emit('toggle-layer', 'referee')" /><span>Referee</span></label>
-                <label class="settings-toggle-item"><input type="checkbox" :checked="props.layerVisibility.fieldLines" @change="emit('toggle-layer', 'fieldLines')" /><span>Field</span></label>
-                <label class="settings-toggle-item"><input type="checkbox" :checked="props.layerVisibility.fouls" @change="emit('toggle-layer', 'fouls')" /><span>Fouls</span></label>
-              </div>
-              <span class="settings-group-title tracker-overlay-title">Tracker Overlay</span>
-              <div class="settings-toggle-list">
-                <label class="settings-toggle-item"><input type="checkbox" :checked="props.layerVisibility.velocity" @change="emit('toggle-layer', 'velocity')" /><span>Velocity</span></label>
-                <label class="settings-toggle-item"><input type="checkbox" :checked="props.layerVisibility.kickedBall" @change="emit('toggle-layer', 'kickedBall')" /><span>Kicked Ball</span></label>
-                <label class="settings-toggle-item"><input type="checkbox" :checked="props.layerVisibility.trackerVisibility" @change="emit('toggle-layer', 'trackerVisibility')" /><span>Visibility Opacity</span></label>
-              </div>
-            </div>
-
-            <div class="settings-group settings-card">
-              <span class="settings-group-title">Replay Source</span>
-              <div class="file-picker">
-                <label class="setting-field-label">
-                  <span>Replay Log</span>
-                  <input class="input-control" type="file" accept=".log,.gz,.log.gz" :disabled="settingsLoading || props.replayLoading" @change="onReplayFileSelected" />
-                </label>
-                <div class="drop-hint">Select .log / .log.gz file</div>
-              </div>
-              <div class="file-picker">
-                <label class="setting-field-label">
-                  <span>Server Path</span>
-                  <input class="input-control" type="text" placeholder="/path/to/file.log" v-model="replayServerPath" :disabled="props.replayLoading" @keydown.enter="onReplayPathLoad" />
-                </label>
-                <button class="btn-load-path" :disabled="props.replayLoading || !replayServerPath.trim()" @click="onReplayPathLoad">Load</button>
-              </div>
-            </div>
-
-            <div class="settings-group settings-card settings-card-wide">
-              <span class="settings-group-title">Network Endpoints</span>
-              <div class="setting-field-grid">
-                <div class="setting-field-label">
-                  <span>Vision Port</span>
-                  <div class="port-radio-group">
-                    <label v-for="p in VISION_PORTS" :key="p" class="port-radio" :class="{ 'port-inactive': !isPortActive('vision', p) }">
-                      <input type="radio" v-model.number="visionPort" :value="p" :disabled="settingsLoading" />
-                      <span class="port-dot" :class="{ active: isPortActive('vision', p) }"></span>
-                      <span>{{ p }}</span>
-                    </label>
-                  </div>
-                </div>
-                <div class="setting-field-label">
-                  <span>Tracked Port</span>
-                  <div class="port-radio-group">
-                    <label v-for="p in TRACKER_PORTS" :key="p" class="port-radio" :class="{ 'port-inactive': !isPortActive('tracker', p) }">
-                      <input type="radio" v-model.number="trackedPort" :value="p" :disabled="settingsLoading" />
-                      <span class="port-dot" :class="{ active: isPortActive('tracker', p) }"></span>
-                      <span>{{ p }}</span>
-                    </label>
-                  </div>
-                </div>
-                <div class="setting-field-label">
-                  <span>Referee Port</span>
-                  <div class="port-radio-group">
-                    <label v-for="p in REFEREE_PORTS" :key="p" class="port-radio" :class="{ 'port-inactive': !isPortActive('referee', p) }">
-                      <input type="radio" v-model.number="refereePort" :value="p" :disabled="settingsLoading" />
-                      <span class="port-dot" :class="{ active: isPortActive('referee', p) }"></span>
-                      <span>{{ p }}</span>
-                    </label>
-                  </div>
-                </div>
-                <label class="setting-field-label">
-                  <span>grSim Address</span>
-                  <input class="input-control" type="text" v-model="grSimAddress" :disabled="settingsLoading" />
-                </label>
-                <label class="setting-field-label">
-                  <span>grSim Port</span>
-                  <input class="input-control" type="number" v-model.number="grSimPort" min="1" max="65535" :disabled="settingsLoading" />
-                </label>
-              </div>
-            </div>
-
-            <div class="settings-group settings-card">
-              <span class="settings-group-title">Automation</span>
-              <div class="settings-toggle-list">
-                <label class="settings-toggle-item"><input type="checkbox" v-model="autoBallPlacementEnabled" /><span>Auto Ball Placement</span></label>
-                <label class="settings-toggle-item"><input type="checkbox" v-model="autoCenterAfterGoalEnabled" /><span>Auto Center After Goal</span></label>
-              </div>
-              <div class="config-buttons">
-                <button class="replay-button ghost" @click="syncInputsFromConfig" :disabled="settingsLoading">Reset</button>
-                <button class="replay-button primary" @click="onSaveConfig" :disabled="settingsLoading">{{ settingsLoading ? 'Saving...' : 'Save' }}</button>
-              </div>
-              <div v-if="error" class="error-text">{{ error }}</div>
-              <div v-else-if="successMessage" class="success-text">{{ successMessage }}</div>
-            </div>
-
-            <div class="settings-group settings-card">
-              <span class="settings-group-title">Notifications</span>
-              <div class="settings-toggle-list">
-                <label class="settings-toggle-item">
-                  <input type="checkbox" v-model="notifSettings.globalEnabled" />
-                  <span>Enable All</span>
-                </label>
-              </div>
-              <span class="settings-group-title notif-sub-title">Per Category</span>
-              <div class="settings-toggle-list">
-                <label
-                  v-for="(cfg, key) in notifSettings.categories"
-                  :key="key"
-                  class="settings-toggle-item"
-                >
-                  <input type="checkbox" v-model="cfg.enabled" :disabled="!notifSettings.globalEnabled" />
-                  <span>{{ NOTIFICATION_CATEGORY_LABELS[key] ?? key }}</span>
-                </label>
-              </div>
-              <span class="settings-group-title notif-sub-title">System Notifications</span>
-              <div class="settings-toggle-list">
-                <label
-                  v-for="(cfg, key) in notifSettings.categories"
-                  :key="key"
-                  class="settings-toggle-item"
-                >
-                  <input
-                    type="checkbox"
-                    v-model="cfg.systemNotification"
-                    :disabled="!notifSettings.globalEnabled || !cfg.enabled"
-                    @change="onSystemNotifyToggle(key as ToastCategory)"
-                  />
-                  <span>{{ NOTIFICATION_CATEGORY_LABELS[key] ?? key }}</span>
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-      </details>
+      <button class="settings-button" :class="{ active: isSettingsOpen }" @click="toggleSettings">
+        Settings
+      </button>
     </div>
 
   </div>
+
+  <Teleport to="body">
+    <Transition name="settings-backdrop">
+      <div v-if="isSettingsOpen" class="settings-backdrop" @click="closeSettingsDrawer" />
+    </Transition>
+    <Transition name="settings-drawer">
+      <div v-if="isSettingsOpen" class="settings-drawer" role="dialog" aria-label="Settings">
+        <div class="settings-drawer-inner">
+          <header class="settings-panel-header">
+            <div class="settings-panel-header-row">
+              <h3 class="settings-panel-title">Settings</h3>
+              <button class="settings-close-button" @click="closeSettingsDrawer" aria-label="閉じる">✕</button>
+            </div>
+            <p class="settings-panel-subtitle">表示・リプレイ・ネットワーク設定</p>
+          </header>
+          <div class="settings-content settings-overview">
+
+            <div class="settings-section">
+              <div class="settings-section-header">表示</div>
+              <div class="settings-section-body">
+                <div class="settings-group settings-card">
+                  <span class="settings-group-title">Layer Visibility</span>
+                  <div class="settings-toggle-list">
+                    <label class="settings-toggle-item" data-tooltip="ボールの描画を切り替え"><input type="checkbox" :checked="props.layerVisibility.ball" @change="emit('toggle-layer', 'ball')" /><span>Ball</span></label>
+                    <label class="settings-toggle-item" data-tooltip="レフェリー情報（配置指示等）の表示を切り替え"><input type="checkbox" :checked="props.layerVisibility.referee" @change="emit('toggle-layer', 'referee')" /><span>Referee</span></label>
+                    <label class="settings-toggle-item" data-tooltip="フィールドラインの描画を切り替え"><input type="checkbox" :checked="props.layerVisibility.fieldLines" @change="emit('toggle-layer', 'fieldLines')" /><span>Field</span></label>
+                    <label class="settings-toggle-item" data-tooltip="ファール/ゲームイベントの表示を切り替え"><input type="checkbox" :checked="props.layerVisibility.fouls" @change="emit('toggle-layer', 'fouls')" /><span>Fouls</span></label>
+                  </div>
+                  <span class="settings-group-title tracker-overlay-title">Tracker Overlay</span>
+                  <div class="settings-toggle-list">
+                    <label class="settings-toggle-item" data-tooltip="ロボット・ボールの速度ベクトルを表示"><input type="checkbox" :checked="props.layerVisibility.velocity" @change="emit('toggle-layer', 'velocity')" /><span>Velocity</span></label>
+                    <label class="settings-toggle-item" data-tooltip="キックされたボールの予測軌道を表示"><input type="checkbox" :checked="props.layerVisibility.kickedBall" @change="emit('toggle-layer', 'kickedBall')" /><span>Kicked Ball</span></label>
+                    <label class="settings-toggle-item" data-tooltip="Trackerの検出信頼度に応じた透明度表示"><input type="checkbox" :checked="props.layerVisibility.trackerVisibility" @change="emit('toggle-layer', 'trackerVisibility')" /><span>Visibility Opacity</span></label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-section">
+              <div class="settings-section-header">データソース</div>
+              <div class="settings-section-body">
+                <div class="settings-group settings-card">
+                  <span class="settings-group-title">Replay Source</span>
+                  <div class="file-picker">
+                    <label class="setting-field-label" data-tooltip="ローカルのログファイルを選択して再生">
+                      <span>Replay Log</span>
+                      <input class="input-control" type="file" accept=".log,.gz,.log.gz" :disabled="settingsLoading || props.replayLoading" @change="onReplayFileSelected" />
+                    </label>
+                    <div class="drop-hint">Select .log / .log.gz file</div>
+                  </div>
+                  <div class="file-picker">
+                    <label class="setting-field-label" data-tooltip="サーバー上のログファイルパスを指定して再生">
+                      <span>Server Path</span>
+                      <input class="input-control" type="text" placeholder="/path/to/file.log" v-model="replayServerPath" :disabled="props.replayLoading" @keydown.enter="onReplayPathLoad" />
+                    </label>
+                    <button class="btn-load-path" :disabled="props.replayLoading || !replayServerPath.trim()" @click="onReplayPathLoad">Load</button>
+                  </div>
+                </div>
+
+                <div class="settings-group settings-card">
+                  <span class="settings-group-title">Network Endpoints</span>
+                  <div class="setting-field-grid">
+                    <div class="setting-field-label" data-tooltip="SSL-Visionのマルチキャストポート">
+                      <span>Vision Port</span>
+                      <div class="port-radio-group">
+                        <label v-for="p in VISION_PORTS" :key="p" class="port-radio" :class="{ 'port-inactive': !isPortActive('vision', p) }">
+                          <input type="radio" v-model.number="visionPort" :value="p" :disabled="settingsLoading" />
+                          <span class="port-dot" :class="{ active: isPortActive('vision', p) }"></span>
+                          <span>{{ p }}</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div class="setting-field-label" data-tooltip="Tracker（ssl-vision-tracker）のポート">
+                      <span>Tracked Port</span>
+                      <div class="port-radio-group">
+                        <label v-for="p in TRACKER_PORTS" :key="p" class="port-radio" :class="{ 'port-inactive': !isPortActive('tracker', p) }">
+                          <input type="radio" v-model.number="trackedPort" :value="p" :disabled="settingsLoading" />
+                          <span class="port-dot" :class="{ active: isPortActive('tracker', p) }"></span>
+                          <span>{{ p }}</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div class="setting-field-label" data-tooltip="Game Controllerのレフェリーポート">
+                      <span>Referee Port</span>
+                      <div class="port-radio-group">
+                        <label v-for="p in REFEREE_PORTS" :key="p" class="port-radio" :class="{ 'port-inactive': !isPortActive('referee', p) }">
+                          <input type="radio" v-model.number="refereePort" :value="p" :disabled="settingsLoading" />
+                          <span class="port-dot" :class="{ active: isPortActive('referee', p) }"></span>
+                          <span>{{ p }}</span>
+                        </label>
+                      </div>
+                    </div>
+                    <label class="setting-field-label" data-tooltip="grSimシミュレータの送信先IPアドレス">
+                      <span>grSim Address</span>
+                      <input class="input-control" type="text" v-model="grSimAddress" :disabled="settingsLoading" />
+                    </label>
+                    <label class="setting-field-label" data-tooltip="grSimシミュレータの送信先ポート番号">
+                      <span>grSim Port</span>
+                      <input class="input-control" type="number" v-model.number="grSimPort" min="1" max="65535" :disabled="settingsLoading" />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-section">
+              <div class="settings-section-header">動作・通知</div>
+              <div class="settings-section-body">
+                <div class="settings-group settings-card">
+                  <span class="settings-group-title">Automation</span>
+                  <div class="settings-toggle-list">
+                    <label class="settings-toggle-item" data-tooltip="ファール後にボールを自動で指定位置に配置"><input type="checkbox" v-model="autoBallPlacementEnabled" /><span>Auto Ball Placement</span></label>
+                    <label class="settings-toggle-item" data-tooltip="ゴール後にボールを自動でセンターに配置"><input type="checkbox" v-model="autoCenterAfterGoalEnabled" /><span>Auto Center After Goal</span></label>
+                  </div>
+                  <div class="config-buttons">
+                    <button class="replay-button ghost" @click="syncInputsFromConfig" :disabled="settingsLoading">Reset</button>
+                    <button class="replay-button primary" @click="onSaveConfig" :disabled="settingsLoading">{{ settingsLoading ? 'Saving...' : 'Save' }}</button>
+                  </div>
+                  <div v-if="error" class="error-text">{{ error }}</div>
+                  <div v-else-if="successMessage" class="success-text">{{ successMessage }}</div>
+                </div>
+
+                <div class="settings-group settings-card">
+                  <span class="settings-group-title">Notifications</span>
+                  <div class="settings-toggle-list">
+                    <label class="settings-toggle-item" data-tooltip="すべてのトースト通知を有効化/無効化">
+                      <input type="checkbox" v-model="notifSettings.globalEnabled" />
+                      <span>Enable All</span>
+                    </label>
+                  </div>
+                  <span class="settings-group-title notif-sub-title">Per Category</span>
+                  <div class="settings-toggle-list">
+                    <label
+                      v-for="(cfg, key) in notifSettings.categories"
+                      :key="key"
+                      class="settings-toggle-item"
+                      data-tooltip="カテゴリ別にトースト通知を制御"
+                    >
+                      <input type="checkbox" v-model="cfg.enabled" :disabled="!notifSettings.globalEnabled" />
+                      <span>{{ NOTIFICATION_CATEGORY_LABELS[key] ?? key }}</span>
+                    </label>
+                  </div>
+                  <span class="settings-group-title notif-sub-title">System Notifications</span>
+                  <div class="settings-toggle-list">
+                    <label
+                      v-for="(cfg, key) in notifSettings.categories"
+                      :key="key"
+                      class="settings-toggle-item"
+                      data-tooltip="OSのシステム通知として表示（ブラウザ権限が必要）"
+                    >
+                      <input
+                        type="checkbox"
+                        v-model="cfg.systemNotification"
+                        :disabled="!notifSettings.globalEnabled || !cfg.enabled"
+                        @change="onSystemNotifyToggle(key as ToastCategory)"
+                      />
+                      <span>{{ NOTIFICATION_CATEGORY_LABELS[key] ?? key }}</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -626,63 +652,103 @@ onUnmounted(() => {
   color: var(--md-sys-color-on-primary);
 }
 
-.settings-drawer {
-  position: relative;
-}
-
-.settings-drawer summary {
+/* Settings ボタン（ステータスバー内） */
+.settings-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   color: var(--md-sys-color-on-surface);
-  user-select: none;
-  list-style: none;
   border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: var(--md-sys-shape-corner-full);
   background: var(--md-sys-color-surface-container-low);
   padding: 0.3em 0.8em;
   font-size: 0.88rem;
-  font-weight: 500;
-  transition: background var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+  font-weight: 600;
+  font-family: var(--md-sys-typescale-body-font);
+  transition:
+    background var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard),
+    color var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
 }
 
-.settings-drawer summary:hover {
+.settings-button:hover {
   background: var(--md-sys-color-surface-container-high);
 }
 
-.settings-drawer summary::-webkit-details-marker {
-  display: none;
+.settings-button.active {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  border-color: var(--md-sys-color-secondary);
 }
 
-.settings-summary-title {
-  font-weight: 600;
+/* バックドロップ */
+.settings-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 490;
+  background: rgba(0, 0, 0, 0.32);
 }
 
-.settings-panel {
-  margin-top: 0.45em;
-  position: absolute;
+/* 右サイドドロワー本体 */
+.settings-drawer {
+  position: fixed;
+  top: 0;
   right: 0;
-  bottom: calc(100% + 0.55em);
-  z-index: 220;
-  width: min(760px, calc(100vw - 2em));
+  height: 100dvh;
+  width: 400px;
+  max-width: 100vw;
+  z-index: 500;
   background: var(--md-sys-color-surface-container-low);
-  border: 1px solid var(--app-glass-border);
-  border-radius: var(--md-sys-shape-corner-extra-large);
-  padding: 1em 1em 1.1em;
+  backdrop-filter: var(--app-glass-blur);
+  border-left: 1px solid var(--app-glass-border);
   box-shadow: var(--md-sys-elevation-4);
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-drawer-inner {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25em 1em 2em;
+  display: flex;
+  flex-direction: column;
 }
 
 .settings-panel-header {
-  margin-bottom: 0.75em;
+  margin-bottom: 1em;
+}
+
+.settings-panel-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .settings-panel-title {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--md-sys-color-on-surface);
+}
+
+.settings-close-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2em;
+  height: 2em;
+  border-radius: var(--md-sys-shape-corner-full);
+  border: none;
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+}
+
+.settings-close-button:hover {
+  background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-on-surface);
 }
 
@@ -690,6 +756,30 @@ onUnmounted(() => {
   margin: 0.25em 0 0;
   color: var(--md-sys-color-on-surface-variant);
   font-size: 0.78rem;
+}
+
+/* アニメーション: バックドロップ */
+.settings-backdrop-enter-active {
+  transition: opacity var(--md-sys-motion-duration-medium) var(--md-sys-motion-easing-standard);
+}
+.settings-backdrop-leave-active {
+  transition: opacity var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+}
+.settings-backdrop-enter-from,
+.settings-backdrop-leave-to {
+  opacity: 0;
+}
+
+/* アニメーション: ドロワー（右からスライドイン） */
+.settings-drawer-enter-active {
+  transition: transform var(--md-sys-motion-duration-medium) var(--md-sys-motion-easing-emphasized-decelerate);
+}
+.settings-drawer-leave-active {
+  transition: transform var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-emphasized-accelerate);
+}
+.settings-drawer-enter-from,
+.settings-drawer-leave-to {
+  transform: translateX(100%);
 }
 
 .settings-content {
@@ -700,8 +790,39 @@ onUnmounted(() => {
 }
 
 .settings-overview {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-direction: column;
+  gap: 0.75em;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+}
+
+.settings-section-header {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--md-sys-color-on-surface-variant);
+  padding: 0 0.25em;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.settings-section-header::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--md-sys-color-outline-variant);
+}
+
+.settings-section-body {
+  display: flex;
+  flex-direction: column;
   gap: 0.65em;
 }
 
@@ -718,9 +839,6 @@ onUnmounted(() => {
   padding: 0.7em 0.75em;
 }
 
-.settings-card-wide {
-  grid-column: 1 / -1;
-}
 
 .settings-group-title {
   color: var(--md-sys-color-primary);
@@ -924,17 +1042,38 @@ onUnmounted(() => {
   box-shadow: 0 0 5px rgba(129, 201, 149, 0.6);
 }
 
-@media (max-width: 900px) {
-  .settings-panel {
-    right: auto;
-    left: 0;
-    width: min(560px, calc(100vw - 2em));
-  }
-  .settings-overview {
-    grid-template-columns: 1fr;
-  }
-  .settings-card-wide {
-    grid-column: auto;
+/* ツールチップ (CSS-only) */
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+  font-size: 0.72rem;
+  font-weight: 400;
+  padding: 0.35em 0.65em;
+  border-radius: var(--md-sys-shape-corner-extra-small);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard);
+  z-index: 300;
+  font-family: var(--md-sys-typescale-body-font);
+}
+
+[data-tooltip]:hover::after {
+  opacity: 1;
+}
+
+@media (max-width: 600px) {
+  .settings-drawer {
+    width: 100vw;
+    border-left: none;
   }
   .setting-field-grid {
     grid-template-columns: 1fr;
