@@ -8,6 +8,19 @@
 A graphical client for [ssl-vision](https://github.com/RoboCup-SSL/ssl-vision) that receives multicast packages and
 shows them in a web-ui.
 
+## このフォークについて
+
+[RoboCup-SSL/ssl-vision-client](https://github.com/RoboCup-SSL/ssl-vision-client) を ibis-ssl チームがフォークしたものです。元リポジトリの成果に敬意を表しつつ、以下の機能を独自に追加しています。
+
+### 追加機能
+
+- **ログリプレイ** — ログファイルのドラッグ&ドロップ読み込み、シークバー操作、キーボードショートカット対応
+- **grSim 連携** — フィールド上でボール・ロボットをダブルクリックで移動操作
+- **Auto Ball Placement 自動化** — ボールプレースメントの自動実行
+- **ゲームイベント対応** — AutoRef / GC イベントのフル対応とトースト通知（リプレイ中も表示）
+- **UI 刷新** — Material 3 Expressive デザイン、設定パネルをサイドドロワーに統合
+- **接続管理改善** — データソース切替、パケット受信の自動検出・自動切替
+
 ## Usage
 If you just want to use this app, simply download the latest [release binary](https://github.com/RoboCup-SSL/ssl-vision-client/releases/latest).
 The binary is self-contained. No dependencies are required.
