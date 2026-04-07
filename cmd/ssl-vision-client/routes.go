@@ -4,9 +4,9 @@ import (
 	"github.com/RoboCup-SSL/ssl-vision-client/frontend"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/config"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/gc"
-	"github.com/RoboCup-SSL/ssl-vision-client/internal/grsim"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/portmonitor"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/replay"
+	"github.com/RoboCup-SSL/ssl-vision-client/internal/sslsim"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/tracked"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/vision"
 	"net/http"
@@ -20,8 +20,9 @@ func addRoutes(
 	RefereeProvider func() *gc.Referee,
 	cfg *config.Config,
 	restarter config.ReceiverRestarter,
+	reconnector config.SimSenderReconnector,
 	replayService replay.Service,
-	grSimSender *grsim.Sender,
+	simSender *sslsim.Sender,
 	monitor *portmonitor.Monitor,
 ) {
 	mux.Handle("/", frontend.HandleFrontend())
@@ -30,12 +31,12 @@ func addRoutes(
 	mux.Handle("/api/vision/detection", vision.HandleVisionDetection(DetectionProvider))
 	mux.Handle("/api/vision/geometry", vision.HandleVisionGeometry(GeometryProvider))
 	mux.Handle("/api/referee", gc.HandleReferee(RefereeProvider))
-	mux.Handle("/api/config", config.HandleConfig(cfg, restarter))
+	mux.Handle("/api/config", config.HandleConfig(cfg, restarter, reconnector))
 	mux.Handle("/api/port-status", portmonitor.HandlePortStatus(monitor))
 	mux.Handle("/api/replay/upload", replay.HandleUpload(replayService))
 	mux.Handle("/api/replay/load-path", replay.HandleLoadPath(replayService))
 	mux.Handle("/api/replay/state", replay.HandleState(replayService))
 	mux.Handle("/api/replay/control", replay.HandleControl(replayService))
-	mux.Handle("/api/grsim/ball", grsim.HandleReplaceBall(grSimSender))
-	mux.Handle("/api/grsim/robot", grsim.HandleReplaceRobot(grSimSender))
+	mux.Handle("/api/sim/ball", sslsim.HandleReplaceBall(simSender))
+	mux.Handle("/api/sim/robot", sslsim.HandleReplaceRobot(simSender))
 }

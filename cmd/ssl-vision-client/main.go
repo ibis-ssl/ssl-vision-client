@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/config"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/gc"
-	"github.com/RoboCup-SSL/ssl-vision-client/internal/grsim"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/portmonitor"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/replay"
+	"github.com/RoboCup-SSL/ssl-vision-client/internal/sslsim"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/tracked"
 	"github.com/RoboCup-SSL/ssl-vision-client/internal/vision"
 	"io"
@@ -28,7 +28,7 @@ type ReceiverManager struct {
 	refereeReceiver *gc.Receiver
 	replayEngine    *replay.Engine
 	mode            replay.Mode
-	grSimSender     *grsim.Sender
+	simSender       *sslsim.Sender
 	skipIfis        []string
 	verbose         bool
 	visionAddr      string
@@ -59,10 +59,10 @@ func main() {
 func setupServer(cfg *config.Config) *http.Server {
 	skipIfis := parseSkipInterfaces()
 
-	// grSim Senderを初期化
-	grSimSender := grsim.NewSender(cfg.GetGrSimAddress())
-	if err := grSimSender.Connect(); err != nil {
-		log.Printf("Warning: Failed to connect to grSim: %v", err)
+	// SSL Simulation Protocol Sender を初期化
+	simSender := sslsim.NewSender(cfg.GetSimAddress())
+	if err := simSender.Connect(); err != nil {
+		log.Printf("Warning: Failed to connect to simulator: %v", err)
 	}
 
 	// ポート監視モニターを初期化・起動
@@ -78,7 +78,7 @@ func setupServer(cfg *config.Config) *http.Server {
 	manager := &ReceiverManager{
 		skipIfis:     skipIfis,
 		verbose:      *verbose,
-		grSimSender:  grSimSender,
+		simSender:    simSender,
 		replayEngine: replay.NewEngine(),
 		mode:         replay.ModeLive,
 	}
@@ -95,8 +95,9 @@ func setupServer(cfg *config.Config) *http.Server {
 		cfg,
 		manager,
 		manager,
-		grSimSender,
+		simSender,
 		monitor,
+		manager,
 	)
 	return &http.Server{
 		Addr:    *address,
@@ -207,6 +208,11 @@ func (rm *ReceiverManager) stopReceiversLocked() {
 	if rm.refereeReceiver != nil && rm.refereeReceiver.MulticastServer != nil {
 		rm.refereeReceiver.MulticastServer.Stop()
 	}
+}
+
+// ReconnectSimSender シミュレータ送信者を新しいアドレスで再接続（config.SimSenderReconnectorインターフェースの実装）
+func (rm *ReceiverManager) ReconnectSimSender(addr string) error {
+	return rm.simSender.Reconnect(addr)
 }
 
 // RestartReceivers レシーバーを再起動（config.ReceiverRestarterインターフェースの実装）

@@ -76,8 +76,8 @@ async function onSystemNotifyToggle(category: ToastCategory): Promise<void> {
     await requestSystemPermission(category)
   }
 }
-const grSimAddress = ref('127.0.0.1')
-const grSimPort = ref(20011)
+const simAddress = ref('127.0.0.1')
+const simPort = ref(10300)
 const autoBallPlacementEnabled = ref(false)
 const autoCenterAfterGoalEnabled = ref(false)
 const isSettingsOpen = ref(false)
@@ -138,8 +138,8 @@ function syncInputsFromConfig() {
   visionPort.value = config.value.visionPort
   trackedPort.value = config.value.trackedPort
   refereePort.value = config.value.refereePort
-  grSimAddress.value = config.value.grSimAddress || '127.0.0.1'
-  grSimPort.value = config.value.grSimPort || 20011
+  simAddress.value = config.value.simAddress || '127.0.0.1'
+  simPort.value = config.value.simPort || 10300
   autoBallPlacementEnabled.value = config.value.autoBallPlacementEnabled || false
   autoCenterAfterGoalEnabled.value = config.value.autoCenterAfterGoalEnabled || false
 }
@@ -149,8 +149,8 @@ async function onSaveConfig() {
     visionPort: visionPort.value,
     trackedPort: trackedPort.value,
     refereePort: refereePort.value,
-    grSimAddress: grSimAddress.value,
-    grSimPort: grSimPort.value,
+    simAddress: simAddress.value,
+    simPort: simPort.value,
     autoBallPlacementEnabled: autoBallPlacementEnabled.value,
     autoCenterAfterGoalEnabled: autoCenterAfterGoalEnabled.value,
   })
@@ -389,13 +389,13 @@ onUnmounted(() => {
                         </label>
                       </div>
                     </div>
-                    <label class="setting-field-label" data-tooltip="grSimシミュレータの送信先IPアドレス">
-                      <span>grSim Address</span>
-                      <input class="input-control" type="text" v-model="grSimAddress" :disabled="settingsLoading" />
+                    <label class="setting-field-label" data-tooltip="シミュレータの送信先IPアドレス（SSL Simulation Protocol）">
+                      <span>Sim Address</span>
+                      <input class="input-control" type="text" v-model="simAddress" :disabled="settingsLoading" />
                     </label>
-                    <label class="setting-field-label" data-tooltip="grSimシミュレータの送信先ポート番号">
-                      <span>grSim Port</span>
-                      <input class="input-control" type="number" v-model.number="grSimPort" min="1" max="65535" :disabled="settingsLoading" />
+                    <label class="setting-field-label" data-tooltip="シミュレータの送信先ポート番号（SSL Simulation Protocol、デフォルト: 10300）">
+                      <span>Sim Port</span>
+                      <input class="input-control" type="number" v-model.number="simPort" min="1" max="65535" :disabled="settingsLoading" />
                     </label>
                   </div>
                 </div>

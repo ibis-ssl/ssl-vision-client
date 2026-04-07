@@ -2,7 +2,7 @@
 import SvgRobot from '@/components/SvgRobot.vue'
 import SvgBall from '@/components/SvgBall.vue'
 import type { SSL_DetectionFrame } from '@/proto/vision/ssl_vision_detection_pb.ts'
-import { useGrSimReplacement } from '@/composables/grsim'
+import { useSimulatorReplacement } from '@/composables/grsim'
 import { inject, type Ref } from 'vue'
 
 const props = withDefaults(
@@ -15,7 +15,7 @@ const props = withDefaults(
   }
 )
 
-const { replaceBall, replaceRobot } = useGrSimReplacement()
+const { replaceBall, replaceRobot } = useSimulatorReplacement()
 
 const selectedObject = inject<Ref<{
   type: 'robot' | 'ball'

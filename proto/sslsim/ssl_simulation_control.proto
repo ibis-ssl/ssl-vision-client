@@ -1,0 +1,79 @@
+syntax = "proto2";
+
+package sslsim;
+
+// SSL Simulation Protocol のシミュレータ制御メッセージ定義。
+// フィールド番号は RoboCup-SSL/ssl-simulation-protocol と完全一致させてワイヤー互換性を確保する。
+
+// チームの識別子（gameController.Team と同一のワイヤーフォーマット）
+enum SslSimTeam {
+    UNKNOWN = 0;
+    YELLOW  = 1;
+    BLUE    = 2;
+}
+
+// ロボットの識別子（gameController.BotId と同一のワイヤーフォーマット）
+message SslSimRobotId {
+    optional uint32    id   = 1;
+    optional SslSimTeam team = 2;
+}
+
+// ボールをテレポートする
+message TeleportBall {
+    // x座標 [m]
+    optional float x  = 1;
+    // y座標 [m]
+    optional float y  = 2;
+    // z座標（高さ）[m]
+    optional float z  = 3;
+    // x方向速度 [m/s]
+    optional float vx = 4;
+    // y方向速度 [m/s]
+    optional float vy = 5;
+    // z方向速度 [m/s]
+    optional float vz = 6;
+    // 衝突を避けて安全にテレポートする
+    optional bool teleport_safely = 7 [default = false];
+    // ボールが転がるよう角速度を調整する
+    optional bool roll = 8 [default = false];
+    // テレポートの代わりに力を加えてボールを移動する（velocityは無視される）
+    optional bool by_force = 9 [default = false];
+}
+
+// ロボットをテレポートする
+message TeleportRobot {
+    // テレポート対象のロボットID
+    required SslSimRobotId id = 1;
+    // x座標 [m]
+    optional float x           = 2;
+    // y座標 [m]
+    optional float y           = 3;
+    // 向き [rad]（x軸から反時計回り）
+    optional float orientation = 4;
+    // x方向グローバル速度 [m/s]
+    optional float v_x         = 5 [default = 0];
+    // y方向グローバル速度 [m/s]
+    optional float v_y         = 6 [default = 0];
+    // 角速度 [rad/s]
+    optional float v_angular   = 7 [default = 0];
+    // trueでフィールドに追加、falseで除去
+    optional bool  present     = 8;
+    // テレポートの代わりに力を加えてロボットを移動する（velocityは無視される）
+    optional bool  by_force    = 9 [default = false];
+}
+
+// シミュレーション状態を制御する
+message SimulatorControl {
+    // ボールをテレポートする
+    optional TeleportBall    teleport_ball  = 1;
+    // ロボットをテレポートする（複数可）
+    repeated TeleportRobot   teleport_robot = 2;
+    // シミュレーション速度倍率を変更する
+    optional float           simulation_speed = 3;
+}
+
+// クライアントからシミュレータへのコマンド
+message SimulatorCommand {
+    // シミュレーション状態の制御
+    optional SimulatorControl control = 1;
+}

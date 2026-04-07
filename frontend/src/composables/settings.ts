@@ -7,8 +7,8 @@ export interface Config {
   visionIP?: string
   trackedIP?: string
   refereeIP?: string
-  grSimAddress?: string
-  grSimPort?: number
+  simAddress?: string
+  simPort?: number
   autoBallPlacementEnabled?: boolean
   autoCenterAfterGoalEnabled?: boolean
 }
@@ -60,8 +60,8 @@ export function useSettings() {
     visionPort: number
     trackedPort: number
     refereePort: number
-    grSimAddress?: string
-    grSimPort?: number
+    simAddress?: string
+    simPort?: number
     autoBallPlacementEnabled?: boolean
     autoCenterAfterGoalEnabled?: boolean
   }) => {

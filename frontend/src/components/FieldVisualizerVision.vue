@@ -18,7 +18,7 @@ import {
 } from '@/composables/vision.ts'
 import { useReferee } from '@/composables/referee.ts'
 import { useReplay } from '@/composables/replay.ts'
-import { useGrSimReplacement } from '@/composables/grsim'
+import { useSimulatorReplacement } from '@/composables/grsim'
 import { useSettings } from '@/composables/settings'
 import { useToast } from '@/composables/toast'
 import { Referee_Command } from '@/proto/gc/ssl_gc_referee_message_pb'
@@ -32,7 +32,7 @@ const { trackedFrame } = useTrackedFrame(activeSource)
 const { trackerSources } = useTrackedSources()
 const replay = useReplay()
 const replayState = replay.state
-const { replaceBall } = useGrSimReplacement()
+const { replaceBall } = useSimulatorReplacement()
 const { config } = useSettings()
 const { addToast } = useToast()
 

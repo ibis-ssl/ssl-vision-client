@@ -8,12 +8,12 @@ import (
 
 // ConfigUpdateRequest 設定更新リクエスト
 type ConfigUpdateRequest struct {
-	VisionPort               int    `json:"visionPort"`
-	TrackedPort              int    `json:"trackedPort"`
-	RefereePort              int    `json:"refereePort"`
-	GrSimAddress             string `json:"grSimAddress"`
-	GrSimPort                int    `json:"grSimPort"`
-	AutoBallPlacementEnabled    bool   `json:"autoBallPlacementEnabled"`
+	VisionPort                 int    `json:"visionPort"`
+	TrackedPort                int    `json:"trackedPort"`
+	RefereePort                int    `json:"refereePort"`
+	SimAddress                 string `json:"simAddress"`
+	SimPort                    int    `json:"simPort"`
+	AutoBallPlacementEnabled   bool   `json:"autoBallPlacementEnabled"`
 	AutoCenterAfterGoalEnabled bool   `json:"autoCenterAfterGoalEnabled"`
 }
 
@@ -22,8 +22,13 @@ type ReceiverRestarter interface {
 	RestartReceivers(visionAddr, trackedAddr, refereeAddr string) error
 }
 
+// SimSenderReconnector シミュレータ送信者を再接続するインターフェース
+type SimSenderReconnector interface {
+	ReconnectSimSender(addr string) error
+}
+
 // HandleConfig 設定の取得・更新を処理するハンドラー
-func HandleConfig(cfg *Config, restarter ReceiverRestarter) http.Handler {
+func HandleConfig(cfg *Config, restarter ReceiverRestarter, reconnector SimSenderReconnector) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
@@ -40,7 +45,7 @@ func HandleConfig(cfg *Config, restarter ReceiverRestarter) http.Handler {
 		}
 
 		if r.Method == http.MethodPost {
-			handleUpdateConfig(w, r, cfg, restarter)
+			handleUpdateConfig(w, r, cfg, restarter, reconnector)
 			return
 		}
 
@@ -50,7 +55,16 @@ func HandleConfig(cfg *Config, restarter ReceiverRestarter) http.Handler {
 
 func handleGetConfig(w http.ResponseWriter, cfg *Config) {
 	w.Header().Set("Content-Type", "application/json")
-	visionPort, trackedPort, refereePort := cfg.GetPorts()
+
+	cfg.mu.RLock()
+	visionPort := cfg.VisionPort
+	trackedPort := cfg.TrackedPort
+	refereePort := cfg.RefereePort
+	simAddress := cfg.SimAddress
+	simPort := cfg.SimPort
+	autoBallPlacement := cfg.AutoBallPlacementEnabled
+	autoCenterAfterGoal := cfg.AutoCenterAfterGoalEnabled
+	cfg.mu.RUnlock()
 
 	response := map[string]interface{}{
 		"visionPort":                 visionPort,
@@ -59,10 +73,10 @@ func handleGetConfig(w http.ResponseWriter, cfg *Config) {
 		"visionIP":                   VisionIP,
 		"trackedIP":                  TrackedIP,
 		"refereeIP":                  RefereeIP,
-		"grSimAddress":               cfg.GrSimAddress,
-		"grSimPort":                  cfg.GrSimPort,
-		"autoBallPlacementEnabled":   cfg.AutoBallPlacementEnabled,
-		"autoCenterAfterGoalEnabled": cfg.AutoCenterAfterGoalEnabled,
+		"simAddress":                 simAddress,
+		"simPort":                    simPort,
+		"autoBallPlacementEnabled":   autoBallPlacement,
+		"autoCenterAfterGoalEnabled": autoCenterAfterGoal,
 	}
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
@@ -71,7 +85,7 @@ func handleGetConfig(w http.ResponseWriter, cfg *Config) {
 	}
 }
 
-func handleUpdateConfig(w http.ResponseWriter, r *http.Request, cfg *Config, restarter ReceiverRestarter) {
+func handleUpdateConfig(w http.ResponseWriter, r *http.Request, cfg *Config, restarter ReceiverRestarter, reconnector SimSenderReconnector) {
 	var req ConfigUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -86,9 +100,9 @@ func handleUpdateConfig(w http.ResponseWriter, r *http.Request, cfg *Config, res
 		return
 	}
 
-	// grSimポートの検証
-	if req.GrSimPort != 0 && (req.GrSimPort <= 0 || req.GrSimPort > 65535) {
-		http.Error(w, "Invalid grSim port number", http.StatusBadRequest)
+	// シミュレータポートの検証（0 は「変更なし」として許可）
+	if req.SimPort < 0 || req.SimPort > 65535 {
+		http.Error(w, "Invalid simulator port number", http.StatusBadRequest)
 		return
 	}
 
@@ -97,8 +111,8 @@ func handleUpdateConfig(w http.ResponseWriter, r *http.Request, cfg *Config, res
 		req.VisionPort,
 		req.TrackedPort,
 		req.RefereePort,
-		req.GrSimAddress,
-		req.GrSimPort,
+		req.SimAddress,
+		req.SimPort,
 		req.AutoBallPlacementEnabled,
 		req.AutoCenterAfterGoalEnabled,
 	)
@@ -116,6 +130,10 @@ func handleUpdateConfig(w http.ResponseWriter, r *http.Request, cfg *Config, res
 		log.Printf("Error restarting receivers: %v", err)
 		http.Error(w, "Failed to restart receivers", http.StatusInternalServerError)
 		return
+	}
+
+	if err := reconnector.ReconnectSimSender(cfg.GetSimAddress()); err != nil {
+		log.Printf("Warning: Failed to reconnect sim sender: %v", err)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

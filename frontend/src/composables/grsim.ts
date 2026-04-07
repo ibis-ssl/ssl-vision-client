@@ -1,8 +1,8 @@
 /**
- * grSim API composable
+ * シミュレータ API composable（SSL Simulation Protocol）
  */
 
-const API_BASE = '/api/grsim';
+const API_BASE = '/api/sim';
 
 export interface BallReplacementRequest {
   x: number;  // メートル単位
@@ -17,7 +17,7 @@ export interface RobotReplacementRequest {
   yellowTeam: boolean;// true=黄色チーム、false=青色チーム
 }
 
-export function useGrSimReplacement() {
+export function useSimulatorReplacement() {
   /**
    * ボールを指定位置に配置
    */
@@ -75,3 +75,6 @@ export function useGrSimReplacement() {
     replaceRobot,
   };
 }
+
+// 後方互換エイリアス
+export const useGrSimReplacement = useSimulatorReplacement;

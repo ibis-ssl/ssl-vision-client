@@ -1,4 +1,4 @@
-package grsim
+package sslsim
 
 import (
 	"encoding/json"
