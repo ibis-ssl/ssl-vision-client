@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"sync"
+
+	"github.com/RoboCup-SSL/ssl-vision-client/internal/sslsim"
 )
 
 const ConfigFilePath = "config.json"
@@ -14,8 +16,6 @@ const (
 	TrackedIP = "224.5.23.2"
 	RefereeIP = "224.5.23.1"
 )
-
-const SimPort = 10300
 
 // Config アプリケーション設定
 type Config struct {
@@ -135,9 +135,9 @@ func (c *Config) GetPorts() (vision, tracked, referee int) {
 	return c.VisionPort, c.TrackedPort, c.RefereePort
 }
 
-// GetSimAddress シミュレータのアドレスを取得（ポートは固定 10300）
+// GetSimAddress シミュレータのアドレスを取得（ポートは固定 sslsim.Port）
 func (c *Config) GetSimAddress() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return fmt.Sprintf("%s:%d", c.SimAddress, SimPort)
+	return fmt.Sprintf("%s:%d", c.SimAddress, sslsim.Port)
 }
