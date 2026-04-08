@@ -77,7 +77,6 @@ async function onSystemNotifyToggle(category: ToastCategory): Promise<void> {
   }
 }
 const simAddress = ref('127.0.0.1')
-const simPort = ref(10300)
 const autoBallPlacementEnabled = ref(false)
 const autoCenterAfterGoalEnabled = ref(false)
 const isSettingsOpen = ref(false)
@@ -139,7 +138,6 @@ function syncInputsFromConfig() {
   trackedPort.value = config.value.trackedPort
   refereePort.value = config.value.refereePort
   simAddress.value = config.value.simAddress || '127.0.0.1'
-  simPort.value = config.value.simPort || 10300
   autoBallPlacementEnabled.value = config.value.autoBallPlacementEnabled || false
   autoCenterAfterGoalEnabled.value = config.value.autoCenterAfterGoalEnabled || false
 }
@@ -150,7 +148,6 @@ async function onSaveConfig() {
     trackedPort: trackedPort.value,
     refereePort: refereePort.value,
     simAddress: simAddress.value,
-    simPort: simPort.value,
     autoBallPlacementEnabled: autoBallPlacementEnabled.value,
     autoCenterAfterGoalEnabled: autoCenterAfterGoalEnabled.value,
   })
@@ -392,10 +389,6 @@ onUnmounted(() => {
                     <label class="setting-field-label" data-tooltip="シミュレータの送信先IPアドレス（SSL Simulation Protocol）">
                       <span>Sim Address</span>
                       <input class="input-control" type="text" v-model="simAddress" :disabled="settingsLoading" />
-                    </label>
-                    <label class="setting-field-label" data-tooltip="シミュレータの送信先ポート番号（SSL Simulation Protocol、デフォルト: 10300）">
-                      <span>Sim Port</span>
-                      <input class="input-control" type="number" v-model.number="simPort" min="1" max="65535" :disabled="settingsLoading" />
                     </label>
                   </div>
                 </div>

@@ -12,7 +12,6 @@ type ConfigUpdateRequest struct {
 	TrackedPort                int    `json:"trackedPort"`
 	RefereePort                int    `json:"refereePort"`
 	SimAddress                 string `json:"simAddress"`
-	SimPort                    int    `json:"simPort"`
 	AutoBallPlacementEnabled   bool   `json:"autoBallPlacementEnabled"`
 	AutoCenterAfterGoalEnabled bool   `json:"autoCenterAfterGoalEnabled"`
 }
@@ -61,7 +60,6 @@ func handleGetConfig(w http.ResponseWriter, cfg *Config) {
 	trackedPort := cfg.TrackedPort
 	refereePort := cfg.RefereePort
 	simAddress := cfg.SimAddress
-	simPort := cfg.SimPort
 	autoBallPlacement := cfg.AutoBallPlacementEnabled
 	autoCenterAfterGoal := cfg.AutoCenterAfterGoalEnabled
 	cfg.mu.RUnlock()
@@ -74,7 +72,6 @@ func handleGetConfig(w http.ResponseWriter, cfg *Config) {
 		"trackedIP":                  TrackedIP,
 		"refereeIP":                  RefereeIP,
 		"simAddress":                 simAddress,
-		"simPort":                    simPort,
 		"autoBallPlacementEnabled":   autoBallPlacement,
 		"autoCenterAfterGoalEnabled": autoCenterAfterGoal,
 	}
@@ -100,19 +97,12 @@ func handleUpdateConfig(w http.ResponseWriter, r *http.Request, cfg *Config, res
 		return
 	}
 
-	// シミュレータポートの検証（0 は「変更なし」として許可）
-	if req.SimPort < 0 || req.SimPort > 65535 {
-		http.Error(w, "Invalid simulator port number", http.StatusBadRequest)
-		return
-	}
-
 	// 設定を更新
 	cfg.Update(
 		req.VisionPort,
 		req.TrackedPort,
 		req.RefereePort,
 		req.SimAddress,
-		req.SimPort,
 		req.AutoBallPlacementEnabled,
 		req.AutoCenterAfterGoalEnabled,
 	)

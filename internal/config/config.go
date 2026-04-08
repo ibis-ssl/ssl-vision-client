@@ -15,13 +15,14 @@ const (
 	RefereeIP = "224.5.23.1"
 )
 
+const SimPort = 10300
+
 // Config アプリケーション設定
 type Config struct {
 	VisionPort                 int    `json:"visionPort"`
 	TrackedPort                int    `json:"trackedPort"`
 	RefereePort                int    `json:"refereePort"`
 	SimAddress                 string `json:"simAddress"`
-	SimPort                    int    `json:"simPort"`
 	AutoBallPlacementEnabled   bool   `json:"autoBallPlacementEnabled"`
 	AutoCenterAfterGoalEnabled bool   `json:"autoCenterAfterGoalEnabled"`
 	mu                         sync.RWMutex
@@ -34,7 +35,6 @@ func DefaultConfig() *Config {
 		TrackedPort:                10010,
 		RefereePort:                10003,
 		SimAddress:                 "127.0.0.1",
-		SimPort:                    10300,
 		AutoBallPlacementEnabled:   false,
 		AutoCenterAfterGoalEnabled: false,
 	}
@@ -67,19 +67,13 @@ func LoadConfig() (*Config, error) {
 		cfg.AutoCenterAfterGoalEnabled = cfg.AutoBallPlacementEnabled
 	}
 
-	// 後方互換: 旧設定ファイルの grSimAddress/grSimPort を simAddress/simPort に移行する。
+	// 後方互換: 旧設定ファイルの grSimAddress を simAddress に移行する。
 	if _, hasNew := raw["simAddress"]; !hasNew {
 		var legacy struct {
 			GrSimAddress string `json:"grSimAddress"`
-			GrSimPort    int    `json:"grSimPort"`
 		}
-		if err := json.Unmarshal(data, &legacy); err == nil {
-			if legacy.GrSimAddress != "" {
-				cfg.SimAddress = legacy.GrSimAddress
-			}
-			if legacy.GrSimPort > 0 {
-				cfg.SimPort = legacy.GrSimPort
-			}
+		if err := json.Unmarshal(data, &legacy); err == nil && legacy.GrSimAddress != "" {
+			cfg.SimAddress = legacy.GrSimAddress
 		}
 	}
 
@@ -103,7 +97,6 @@ func (c *Config) Save() error {
 func (c *Config) Update(
 	visionPort, trackedPort, refereePort int,
 	simAddress string,
-	simPort int,
 	autoBallPlacementEnabled bool,
 	autoCenterAfterGoalEnabled bool,
 ) {
@@ -121,9 +114,6 @@ func (c *Config) Update(
 	}
 	if simAddress != "" {
 		c.SimAddress = simAddress
-	}
-	if simPort > 0 {
-		c.SimPort = simPort
 	}
 	c.AutoBallPlacementEnabled = autoBallPlacementEnabled
 	c.AutoCenterAfterGoalEnabled = autoCenterAfterGoalEnabled
@@ -145,9 +135,9 @@ func (c *Config) GetPorts() (vision, tracked, referee int) {
 	return c.VisionPort, c.TrackedPort, c.RefereePort
 }
 
-// GetSimAddress シミュレータのアドレスを取得
+// GetSimAddress シミュレータのアドレスを取得（ポートは固定 10300）
 func (c *Config) GetSimAddress() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return fmt.Sprintf("%s:%d", c.SimAddress, c.SimPort)
+	return fmt.Sprintf("%s:%d", c.SimAddress, SimPort)
 }

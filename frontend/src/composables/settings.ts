@@ -8,7 +8,6 @@ export interface Config {
   trackedIP?: string
   refereeIP?: string
   simAddress?: string
-  simPort?: number
   autoBallPlacementEnabled?: boolean
   autoCenterAfterGoalEnabled?: boolean
 }
@@ -61,7 +60,6 @@ export function useSettings() {
     trackedPort: number
     refereePort: number
     simAddress?: string
-    simPort?: number
     autoBallPlacementEnabled?: boolean
     autoCenterAfterGoalEnabled?: boolean
   }) => {
