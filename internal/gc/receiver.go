@@ -2,6 +2,7 @@ package gc
 
 import (
 	"github.com/RoboCup-SSL/ssl-go-tools/pkg/sslnet"
+	"github.com/RoboCup-SSL/ssl-vision-client/internal/common"
 	"google.golang.org/protobuf/proto"
 	"log"
 	"net"
@@ -13,6 +14,7 @@ type Receiver struct {
 	mutex             sync.Mutex
 	MulticastServer   *sslnet.MulticastServer
 	ConsumeRefereeMsg func(msg *Referee)
+	freq              common.FrequencyCounter
 }
 
 func NewReceiver(multicastAddress string) (r *Receiver) {
@@ -22,6 +24,7 @@ func NewReceiver(multicastAddress string) (r *Receiver) {
 	r.ConsumeRefereeMsg = func(referee *Referee) {
 		// noop by default
 	}
+	r.freq = common.NewFrequencyCounter()
 	return
 }
 
@@ -35,6 +38,10 @@ func (r *Receiver) RefereeMsg() (msg *Referee) {
 	return r.lastRefereeMsg
 }
 
+func (r *Receiver) Hz() float64 {
+	return r.freq.Hz()
+}
+
 func (r *Receiver) consumeMessage(data []byte, _ *net.UDPAddr) {
 	msg := new(Referee)
 	if err := proto.Unmarshal(data, msg); err != nil {
@@ -44,4 +51,5 @@ func (r *Receiver) consumeMessage(data []byte, _ *net.UDPAddr) {
 	r.mutex.Lock()
 	r.lastRefereeMsg = msg
 	r.mutex.Unlock()
+	r.freq.Record()
 }

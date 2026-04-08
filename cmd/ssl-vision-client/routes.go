@@ -18,6 +18,7 @@ func addRoutes(
 	TrackerProvider func() map[string]*tracked.TrackerWrapperPacket,
 	GeometryProvider func() *vision.SSL_GeometryData,
 	RefereeProvider func() *gc.Referee,
+	StatsProvider func() vision.ServiceStats,
 	cfg *config.Config,
 	restarter config.ReceiverRestarter,
 	reconnector config.SimSenderReconnector,
@@ -30,6 +31,7 @@ func addRoutes(
 	mux.Handle("/api/tracker", tracked.HandleTracker(TrackerProvider))
 	mux.Handle("/api/vision/detection", vision.HandleVisionDetection(DetectionProvider))
 	mux.Handle("/api/vision/geometry", vision.HandleVisionGeometry(GeometryProvider))
+	mux.Handle("/api/service-stats", vision.HandleServiceStats(StatsProvider))
 	mux.Handle("/api/referee", gc.HandleReferee(RefereeProvider))
 	mux.Handle("/api/config", config.HandleConfig(cfg, restarter, reconnector))
 	mux.Handle("/api/port-status", portmonitor.HandlePortStatus(monitor))

@@ -92,6 +92,7 @@ func setupServer(cfg *config.Config) *http.Server {
 		manager.GetTrackedFrames,
 		manager.GetGeometry,
 		manager.GetRefereeMsg,
+		manager.GetServiceStats,
 		cfg,
 		manager,
 		manager,
@@ -144,6 +145,29 @@ func (rm *ReceiverManager) GetDetectionFrames() *vision.SSL_DetectionFrame {
 		return receiver.CombinedDetectionFrames()
 	}
 	return nil
+}
+
+// GetServiceStats 各レシーバーの統計情報（Hz・カメラ数）を集約して返す
+func (rm *ReceiverManager) GetServiceStats() vision.ServiceStats {
+	rm.mu.Lock()
+	visionRcv := rm.visionReceiver
+	trackedRcv := rm.trackedReceiver
+	refereeRcv := rm.refereeReceiver
+	rm.mu.Unlock()
+
+	stats := vision.ServiceStats{}
+	if visionRcv != nil {
+		stats.VisionHz = visionRcv.Hz()
+		stats.CameraCount = visionRcv.CameraCount()
+	}
+	if trackedRcv != nil {
+		stats.TrackerHz = trackedRcv.Hz()
+		stats.TrackerActive = stats.TrackerHz > 0
+	}
+	if refereeRcv != nil {
+		stats.RefereeHz = refereeRcv.Hz()
+	}
+	return stats
 }
 
 // GetTrackedFrames 現在のトラッキングレシーバーからフレームを取得

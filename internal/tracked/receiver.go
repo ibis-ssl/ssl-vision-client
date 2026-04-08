@@ -2,6 +2,7 @@ package tracked
 
 import (
 	"github.com/RoboCup-SSL/ssl-go-tools/pkg/sslnet"
+	"github.com/RoboCup-SSL/ssl-vision-client/internal/common"
 	"google.golang.org/protobuf/proto"
 	"log"
 	"net"
@@ -15,12 +16,14 @@ type Receiver struct {
 	mutex             sync.Mutex
 	MulticastServer   *sslnet.MulticastServer
 	ConsumeDetections func(frame *TrackerWrapperPacket)
+	freq              common.FrequencyCounter
 }
 
 func NewReceiver(multicastAddress string) (r *Receiver) {
 	r = new(Receiver)
 	r.frames = map[string]*TrackerWrapperPacket{}
 	r.receivedTimes = map[string]time.Time{}
+	r.freq = common.NewFrequencyCounter()
 	r.MulticastServer = sslnet.NewMulticastServer(multicastAddress)
 	r.MulticastServer.Consumer = r.consumeMessage
 	r.ConsumeDetections = func(*TrackerWrapperPacket) {
@@ -58,6 +61,13 @@ func (r *Receiver) consumeMessage(data []byte, _ *net.UDPAddr) {
 		r.ConsumeDetections(message)
 	}
 	r.mutex.Unlock()
+	if message.Uuid != nil && message.TrackedFrame != nil {
+		r.freq.Record()
+	}
+}
+
+func (r *Receiver) Hz() float64 {
+	return r.freq.Hz()
 }
 
 func parseVisionWrapperPacket(data []byte) (message *TrackerWrapperPacket, err error) {

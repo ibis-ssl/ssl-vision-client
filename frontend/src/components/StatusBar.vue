@@ -4,6 +4,7 @@ import type { ReplayState } from '@/composables/replay.ts'
 import type { LayerVisibility } from '@/components/LayerControl.vue'
 import { useSettings } from '@/composables/settings'
 import { usePortStatus } from '@/composables/portStatus'
+import { useServiceStats } from '@/composables/serviceStats'
 import { useToast, type ToastCategory } from '@/composables/toast'
 import { useNotificationSettings } from '@/composables/notificationSettings'
 import { formatTimeNs } from '@/utils/time'
@@ -53,6 +54,7 @@ interface Emits {
 const emit = defineEmits<Emits>()
 const { config, loading: settingsLoading, error, successMessage, fetchConfig, updateConfig } = useSettings()
 const { portStatus, isPortActive } = usePortStatus()
+const { serviceStats } = useServiceStats()
 const { addToast } = useToast()
 const { settings: notifSettings, requestSystemPermission } = useNotificationSettings()
 
@@ -250,8 +252,25 @@ onUnmounted(() => {
     <div class="main-row">
       <div class="info-section connection-status">
         <span class="label">接続:</span>
-        <span class="connection-indicator" :class="{ connected: visionConnected }" title="Vision">V</span>
-        <span class="connection-indicator" :class="{ connected: refereeConnected }" title="Referee">R</span>
+        <span class="connection-indicator" :class="{ connected: visionConnected }" title="Vision">
+          V
+          <template v-if="visionConnected">
+            <span class="stat-detail">{{ Math.round(serviceStats.visionHz) }}Hz</span>
+            <span class="stat-detail">{{ serviceStats.cameraCount }}cam</span>
+          </template>
+        </span>
+        <span class="connection-indicator" :class="{ connected: refereeConnected }" title="Referee">
+          R
+          <template v-if="refereeConnected">
+            <span class="stat-detail">{{ Math.round(serviceStats.refereeHz) }}Hz</span>
+          </template>
+        </span>
+        <span class="connection-indicator" :class="{ connected: serviceStats.trackerActive }" title="Tracker">
+          T
+          <template v-if="serviceStats.trackerActive">
+            <span class="stat-detail">{{ Math.round(serviceStats.trackerHz) }}Hz</span>
+          </template>
+        </span>
         <span class="connection-indicator" :class="{ connected: grsimConnected }" title="grSim">G</span>
       </div>
       <button class="mode-badge" :class="{ replay: replayMode }" @click="toggleMode()">
@@ -585,6 +604,7 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.2em;
   min-width: 1.6em;
   height: 1.6em;
   padding: 0 0.3em;
@@ -594,6 +614,11 @@ onUnmounted(() => {
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.02em;
+}
+
+.stat-detail {
+  font-weight: 400;
+  opacity: 0.85;
 }
 
 .connection-indicator.connected {

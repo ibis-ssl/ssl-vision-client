@@ -2,6 +2,7 @@ package vision
 
 import (
 	"github.com/RoboCup-SSL/ssl-go-tools/pkg/sslnet"
+	"github.com/RoboCup-SSL/ssl-vision-client/internal/common"
 	"google.golang.org/protobuf/proto"
 	"log"
 	"net"
@@ -17,12 +18,14 @@ type Receiver struct {
 	MulticastServer   *sslnet.MulticastServer
 	ConsumeDetections func(frame *SSL_DetectionFrame)
 	ConsumeGeometry   func(frame *SSL_GeometryData)
+	freq              common.FrequencyCounter
 }
 
 func NewReceiver(multicastAddress string) (r *Receiver) {
 	r = new(Receiver)
 	r.detections = map[int]*SSL_DetectionFrame{}
 	r.receivedTimes = map[int]time.Time{}
+	r.freq = common.NewFrequencyCounter()
 	r.MulticastServer = sslnet.NewMulticastServer(multicastAddress)
 	r.MulticastServer.Consumer = r.consumeMessage
 	r.ConsumeDetections = func(*SSL_DetectionFrame) {
@@ -66,6 +69,9 @@ func (r *Receiver) consumeMessage(data []byte, _ *net.UDPAddr) {
 		r.ConsumeGeometry(message.Geometry)
 	}
 	r.mutex.Unlock()
+	if message.Detection != nil {
+		r.freq.Record()
+	}
 }
 
 func (r *Receiver) CombinedDetectionFrames() (f *SSL_DetectionFrame) {
@@ -107,6 +113,16 @@ func (r *Receiver) cleanupDetections() {
 			delete(r.detections, camId)
 		}
 	}
+}
+
+func (r *Receiver) Hz() float64 {
+	return r.freq.Hz()
+}
+
+func (r *Receiver) CameraCount() int {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	return len(r.detections)
 }
 
 func (r *Receiver) CurrentGeometry() (geometry *SSL_GeometryData) {
