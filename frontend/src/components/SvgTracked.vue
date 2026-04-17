@@ -133,6 +133,7 @@ const robotArrows = computed(() =>
     :y="s.pos!.y"
     :height="(s.pos!.z || 0) * 1000"
     :visibility="showVisibility ? (s.visibility || 1) : 1"
+    :draggable="true"
   />
 
   <!-- ボール速度矢印 -->
@@ -163,6 +164,7 @@ const robotArrows = computed(() =>
     :team-color="s.robotId!.team === Team.YELLOW ? 'YELLOW' : 'BLUE'"
     :visibility="showVisibility ? (s.visibility || 1) : 1"
     :is-kicker="showKickedBall && isKickingRobot(s.robotId!)"
+    :draggable="true"
   />
 
   <!-- ロボット速度矢印 -->

@@ -228,6 +228,7 @@ function getOpacity(event: GameEvent): number {
         stroke="black"
         stroke-width="0.002"
         opacity="0.8"
+        style="pointer-events: none"
       />
 
       <!-- アイコン（絵文字） -->

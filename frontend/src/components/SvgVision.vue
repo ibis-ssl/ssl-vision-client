@@ -2,8 +2,6 @@
 import SvgRobot from '@/components/SvgRobot.vue'
 import SvgBall from '@/components/SvgBall.vue'
 import type { SSL_DetectionFrame } from '@/proto/vision/ssl_vision_detection_pb.ts'
-import { useSimulatorReplacement } from '@/composables/grsim'
-import { inject, type Ref } from 'vue'
 
 const props = withDefaults(
   defineProps<{
@@ -14,49 +12,6 @@ const props = withDefaults(
     showBall: true,
   }
 )
-
-const { replaceBall, replaceRobot } = useSimulatorReplacement()
-
-const selectedObject = inject<Ref<{
-  type: 'robot' | 'ball'
-  id?: number
-  team?: 'YELLOW' | 'BLUE'
-} | null>>('selectedObject')!
-
-async function onMoveObject(x: number, y: number) {
-  if (!selectedObject.value) return
-
-  try {
-    if (selectedObject.value.type === 'ball') {
-      await replaceBall(x, y)
-    } else if (selectedObject.value.type === 'robot') {
-      // ロボットの現在の向きを取得
-      const robot =
-        selectedObject.value.team === 'YELLOW'
-          ? props.detectionFrame.robotsYellow.find((r) => r.robotId === selectedObject.value?.id)
-          : props.detectionFrame.robotsBlue.find((r) => r.robotId === selectedObject.value?.id)
-
-      if (robot) {
-        // orientationをラジアンから度に変換
-        const dirDeg = (robot.orientation * 180) / Math.PI
-        await replaceRobot(
-          x,
-          y,
-          dirDeg,
-          selectedObject.value.id!,
-          selectedObject.value.team === 'YELLOW'
-        )
-      }
-    }
-  } catch (error) {
-    console.error('Failed to move object:', error)
-  }
-}
-
-// 親コンポーネントから呼び出せるようにexposeする
-defineExpose({
-  onMoveObject,
-})
 </script>
 
 <template>

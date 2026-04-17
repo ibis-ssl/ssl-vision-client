@@ -44,6 +44,7 @@ const teamColor = computed(() => {
       stroke-width="1.0"
       stroke-opacity="0.6"
       stroke-linecap="round"
+      pointer-events="none"
     />
   </g>
 </template>

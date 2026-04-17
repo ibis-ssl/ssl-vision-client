@@ -22,6 +22,7 @@ import { useSimulatorReplacement } from '@/composables/grsim'
 import { useSettings } from '@/composables/settings'
 import { useToast } from '@/composables/toast'
 import { Referee_Command } from '@/proto/gc/ssl_gc_referee_message_pb'
+import { Team } from '@/proto/gc/ssl_gc_common_pb'
 import { REFEREE_COMMAND_LABELS, GAME_EVENT_INFO, teamLabel, isUrgentCommand } from '@/utils/referee'
 
 const activeSource = ref('vision')
@@ -32,7 +33,7 @@ const { trackedFrame } = useTrackedFrame(activeSource)
 const { trackerSources } = useTrackedSources()
 const replay = useReplay()
 const replayState = replay.state
-const { replaceBall } = useSimulatorReplacement()
+const { replaceBall, replaceRobot } = useSimulatorReplacement()
 const { config } = useSettings()
 const { addToast } = useToast()
 
@@ -61,8 +62,6 @@ const ballPosition = computed(() => {
   return null
 })
 
-const svgVisionRef = ref<InstanceType<typeof SvgVision>>()
-
 // 選択状態をこのコンポーネントで管理し、配下全体でprovide
 const selectedObject = ref<{
   type: 'robot' | 'ball'
@@ -71,8 +70,33 @@ const selectedObject = ref<{
 } | null>(null)
 provide('selectedObject', selectedObject)
 
-function onMoveObject(x: number, y: number) {
-  svgVisionRef.value?.onMoveObject(x, y)
+async function onMoveObject(x: number, y: number) {
+  if (!selectedObject.value) return
+
+  try {
+    if (selectedObject.value.type === 'ball') {
+      await replaceBall(x, y)
+    } else if (selectedObject.value.type === 'robot') {
+      const id = selectedObject.value.id!
+      const isYellow = selectedObject.value.team === 'YELLOW'
+
+      const visionRobot = isYellow
+        ? detectionFrame.value?.robotsYellow.find((r) => r.robotId === id)
+        : detectionFrame.value?.robotsBlue.find((r) => r.robotId === id)
+
+      const orientation = visionRobot?.orientation
+        ?? trackedFrame.value?.robots.find(
+            (r) => r.robotId!.id === id &&
+              r.robotId!.team === (isYellow ? Team.YELLOW : Team.BLUE)
+          )?.orientation
+        ?? 0
+
+      const dirDeg = (orientation * 180) / Math.PI
+      await replaceRobot(x, y, dirDeg, id, isYellow)
+    }
+  } catch (error) {
+    console.error('Failed to move object:', error)
+  }
 }
 
 const sources = computed(() => {
@@ -362,7 +386,6 @@ onUnmounted(() => {
     >
       <FieldVisualizer :field="field" :show-field-lines="layerVisibility.fieldLines" @move-object="onMoveObject">
         <SvgVision
-          ref="svgVisionRef"
           v-if="detectionFrame"
           :detection-frame="detectionFrame"
           :show-ball="layerVisibility.ball"
